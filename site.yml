@@ -1,0 +1,6 @@
+---
+- name: CloudCurio Base Bootstrap
+  hosts: cloudcurio
+  become: yes
+  roles:
+    - cloudcurio-node-bootstrap
