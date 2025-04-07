@@ -1,0 +1,10 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ interface_name }}:
+      dhcp4: no
+      addresses: [{{ static_ip }}/24]
+      gateway4: {{ gateway }}
+      nameservers:
+        addresses: {{ nameservers }}

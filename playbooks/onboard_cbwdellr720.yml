@@ -1,0 +1,66 @@
+---
+- name: Onboard cbwdellr720 into Homelab
+  hosts: openstack_controllers
+  become: yes
+
+  vars:
+    hostname: cbwdellr720
+    static_ip: 192.168.4.20
+    gateway: 192.168.4.1
+    nameservers: [1.1.1.1, 8.8.8.8]
+    interface_name: eno1
+    tailscale_key: "tskey-..."
+
+  tasks:
+    - name: Set hostname
+      hostname:
+        name: "{{ hostname }}"
+
+    - name: Configure static IP using Netplan
+      template:
+        src: netplan_static.yaml.j2
+        dest: /etc/netplan/01-netcfg.yaml
+      notify: Netplan Apply
+
+    - name: Create user
+      user:
+        name: cbwinslow
+        groups: sudo
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Add authorized SSH key
+      authorized_key:
+        user: cbwinslow
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: Install packages
+      apt:
+        name:
+          - htop
+          - net-tools
+          - curl
+          - gnupg
+          - lvm2
+          - python3-pip
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Install Juju
+      snap:
+        name: juju
+        classic: yes
+        state: present
+
+    - name: Install Tailscale
+      shell: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+        tailscale up --authkey {{ tailscale_key }} --hostname {{ hostname }}
+      args:
+        creates: /usr/sbin/tailscaled
+
+  handlers:
+    - name: Netplan Apply
+      command: netplan apply
