@@ -100,3 +100,40 @@
         groups: microk8s
         append: yes
       ignore_errors: yes
+
+  tasks:
+
+    - name: Create image directory
+      file:
+        path: /var/lib/libvirt/images/cloud
+        state: directory
+        mode: '0755'
+      tags: vms
+
+    - name: Download Ubuntu 22.04 cloud image
+      get_url:
+        url: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+        dest: /var/lib/libvirt/images/cloud/ubuntu.img
+      tags: vms
+
+    - name: Create cloud-init ISO for dev-ubuntu
+      command: >
+        cloud-localds -v
+        /var/lib/libvirt/images/cloud/ubuntu-seed.iso
+        /root/dev-ubuntu-user-data.yaml
+      args:
+        creates: /var/lib/libvirt/images/cloud/ubuntu-seed.iso
+      tags: vms
+
+    - name: Create dev-ubuntu VM
+      command: >
+        virt-install --name dev-ubuntu --memory 4096 --vcpus 2
+        --disk path=/var/lib/libvirt/images/dev-ubuntu.qcow2,format=qcow2,size=15
+        --disk path=/var/lib/libvirt/images/cloud/ubuntu-seed.iso,device=cdrom
+        --os-type linux --os-variant ubuntu22.04
+        --import --graphics none --network bridge=br0
+      args:
+        creates: /etc/libvirt/qemu/dev-ubuntu.xml
+      tags: vms
+
+      
