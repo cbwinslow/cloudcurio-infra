@@ -1,0 +1,31 @@
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: present
+      tags: reverse_proxy
+
+    - name: Enable NGINX and allow through firewall
+      ufw:
+        rule: allow
+        name: 'Nginx Full'
+      tags: reverse_proxy
+
+    - name: Deploy reverse proxy config
+      template:
+        src: templates/reverse-proxy.conf.j2
+        dest: /etc/nginx/sites-available/devtools
+      notify: Reload NGINX
+      tags: reverse_proxy
+
+    - name: Enable reverse proxy site
+      file:
+        src: /etc/nginx/sites-available/devtools
+        dest: /etc/nginx/sites-enabled/devtools
+        state: link
+      tags: reverse_proxy
+
+  handlers:
+    - name: Reload NGINX
+      service:
+        name: nginx
+        state: reloaded
