@@ -1,0 +1,39 @@
+# File: infra/ansible/site.yml
+
+- name: Common setup (apt updates, users, firewall)
+  hosts: vault
+  become: true
+  roles:
+    - common
+
+- name: Install Docker & Docker Compose
+  hosts: vault
+  become: true
+  roles:
+    - docker
+
+- name: Install and configure Vault (HashiCorp Vault OSS)
+  hosts: vault
+  become: true
+  roles:
+    - vault
+
+- name: Install Vaultwarden (Bitwarden-rs)
+  hosts: vault
+  become: true
+  roles:
+    - vaultwarden
+
+- name: Install and configure Traefik
+  hosts: vault
+  become: true
+  roles:
+    - traefik
+
+- name: Install code-server (VS Code in browser)
+  hosts: vault
+  become: true
+  roles:
+    - code-server
+
+# …add more roles as needed (nginx, caddy, node, python, warp, etc.)…
