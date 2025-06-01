@@ -1,0 +1,9 @@
+api.cloudcurio.cc {
+  reverse_proxy fastapi:8000
+}
+ide.cloudcurio.cc {
+  reverse_proxy code-server:8443
+  tls {
+    on_demand
+  }
+}
