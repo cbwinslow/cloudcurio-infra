@@ -1,0 +1,211 @@
+version: "3.9"
+
+services:
+  # ──────────────────────────────────
+  # Reverse Proxy (Traefik)
+  # ──────────────────────────────────
+  traefik:
+    image: traefik:v2.13
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+
+  # ──────────────────────────────────
+  # PostgreSQL (for your apps + Jira/Bitbucket)
+  # ──────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cbwuser
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: cbwdb
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    labels:
+      - "traefik.enable=false"
+
+  # ──────────────────────────────────
+  # Redis (for caching, Dify, etc.)
+  # ──────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    labels:
+      - "traefik.enable=false"
+
+  # ──────────────────────────────────
+  # Dev Container (Python + Node + LangChain + Crewai + Camel)
+  # ──────────────────────────────────
+  dev:
+    build:
+      context: ./dev_container
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+      - ./models:/models      # store LLM weights here
+    ports:
+      - "8000:8000"  # FastAPI / Python APIs
+      - "3000:3000"  # Node front-end dev server
+      - "5000:5000"  # ComfyUI / stream server
+      - "7860:7860"  # StableDiffusion WebUI default port
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dev.rule=Host(`dev.${DOMAIN}`)"
+      - "traefik.http.routers.dev.entrypoints=websecure"
+      - "traefik.http.routers.dev.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # code-server (VS Code in the Browser)
+  # ──────────────────────────────────
+  code-server:
+    image: codercom/code-server:latest
+    restart: unless-stopped
+    env_file:
+      - ./envs/code-server.env
+    volumes:
+      - ./workspace:/home/coder/project
+      - ./code-server/extensions:/home/coder/.local/share/code-server/extensions
+      - ./code-server/settings:/home/coder/.config/code-server
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.codeserver.rule=Host(`ide.${DOMAIN}`)"
+      - "traefik.http.routers.codeserver.entrypoints=websecure"
+      - "traefik.http.routers.codeserver.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # Dify (AI Portal & Agent Runner)
+  # ──────────────────────────────────
+  dify:
+    image: dify/dify:latest
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://cbwuser:$(cat /run/secrets/postgres_password)@postgres:5432/cbwdb
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - dify_data:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dify.rule=Host(`dify.${DOMAIN}`)"
+      - "traefik.http.routers.dify.entrypoints=websecure"
+      - "traefik.http.routers.dify.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # Coolify (Heroku-style Deployment UI)
+  # ──────────────────────────────────
+  coolify:
+    image: coollabsio/coolify:latest
+    restart: unless-stopped
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=cbwuser
+      - DB_PASSWORD_FILE=/run/secrets/postgres_password
+      - REDIS_ADDRESS=redis:6379
+    volumes:
+      - coolify_data:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.coolify.rule=Host(`coolify.${DOMAIN}`)"
+      - "traefik.http.routers.coolify.entrypoints=websecure"
+      - "traefik.http.routers.coolify.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # Jira (Self-Hosted, Atlassian)
+  # ──────────────────────────────────
+  jira:
+    image: atlassian/jira-software:latest
+    restart: unless-stopped
+    environment:
+      - ATL_DB_TYPE=postgres72
+      - ATL_JDBC_USER=cbwuser
+      - ATL_JDBC_PASSWORD_FILE=/run/secrets/postgres_password
+      - ATL_DB_URL=jdbc:postgresql://postgres:5432/cbwdb?user=cbwuser&password=$(cat /run/secrets/postgres_password)
+    volumes:
+      - jira_home:/var/atlassian/jira
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jira.rule=Host(`jira.${DOMAIN}`)"
+      - "traefik.http.routers.jira.entrypoints=websecure"
+      - "traefik.http.routers.jira.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # Bitbucket (Self-Hosted)
+  # ──────────────────────────────────
+  bitbucket:
+    image: atlassian/bitbucket-server:latest
+    restart: unless-stopped
+    environment:
+      - ATL_DB_TYPE=postgres72
+      - ATL_JDBC_USER=cbwuser
+      - ATL_JDBC_PASSWORD_FILE=/run/secrets/postgres_password
+      - ATL_DB_URL=jdbc:postgresql://postgres:5432/cbwdb?user=cbwuser&password=$(cat /run/secrets/postgres_password)
+    volumes:
+      - bitbucket_home:/var/atlassian/application-data/bitbucket
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bitbucket.rule=Host(`bitbucket.${DOMAIN}`)"
+      - "traefik.http.routers.bitbucket.entrypoints=websecure"
+      - "traefik.http.routers.bitbucket.tls.certresolver=letsencrypt"
+
+  # ──────────────────────────────────
+  # Caddy (Optional Alternative to Traefik)
+  # ──────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "2015:2015"
+    labels:
+      - "traefik.enable=false"
+
+  # ──────────────────────────────────
+  # (Add other services here as needed)
+  # e.g. Apify (node CLI), Camel-multiagent workers, ComfyUI, SD WebUI, etc.
+  # ──────────────────────────────────
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+
+volumes:
+  postgres_data:
+  redis_data:
+  dify_data:
+  coolify_data:
+  jira_home:
+  bitbucket_home:
+  caddy_data:
+  caddy_config:
