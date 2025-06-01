@@ -1,0 +1,138 @@
+version: "3.9"
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1) Reverse Proxy (Traefik)
+  # ─────────────────────────────────────────────────────────────────────────
+  traefik:
+    image: traefik:v2.13
+    container_name: traefik_proxy
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2) Redis
+  # ─────────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--save", "60", "1"
+    ]
+    labels:
+      - "traefik.enable=false"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 3) code-server (VS Code in your Browser)
+  # ─────────────────────────────────────────────────────────────────────────
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code_server
+    restart: unless-stopped
+    env_file:
+      - ./envs/code-server.env
+    volumes:
+      - ./workspace:/home/coder/project
+      - ./code-server/extensions:/home/coder/.local/share/code-server/extensions
+      - ./code-server/settings:/home/coder/.config/code-server
+    ports:
+      - "8443:8443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code-server.rule=Host(`code.${DOMAIN}`)"
+      - "traefik.http.routers.code-server.entrypoints=websecure"
+      - "traefik.http.routers.code-server.tls.certresolver=myresolver"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 4) ComfyUI (a local AI GUI for Stable Diffusion)
+  # ─────────────────────────────────────────────────────────────────────────
+  comfyui:
+    image: ghcr.io/comfyanonymous/comfyui:latest
+    container_name: comfyui
+    restart: unless-stopped
+    # GPU support (requires nvidia container toolkit on host)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./models:/home/user/models
+      - ./comfyui_data:/home/user/comfyui
+    ports:
+      - "7860:7860"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.comfyui.rule=Host(`comfyui.${DOMAIN}`)"
+      - "traefik.http.routers.comfyui.entrypoints=websecure"
+      - "traefik.http.routers.comfyui.tls.certresolver=myresolver"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 5) “Dev” Container (Python, Node, OpenAI SDK, etc.)
+  # ─────────────────────────────────────────────────────────────────────────
+  dev:
+    build:
+      context: ./dev_container
+      dockerfile: Dockerfile
+    container_name: cbw_fullstack_dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+    ports:
+      - "8000:8000"
+      - "3000:3000"
+      - "5000:5000"
+      - "9000:9000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dev.rule=Host(`dev.${DOMAIN}`)"
+      - "traefik.http.routers.dev.entrypoints=websecure"
+      - "traefik.http.routers.dev.tls.certresolver=myresolver"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 6) Caddy (as an alternative or for HTTP/2, gRPC, etc.)
+  # ─────────────────────────────────────────────────────────────────────────
+  caddy:
+    image: caddy:2.7.0-alpine
+    container_name: caddy_server
+    restart: unless-stopped
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "2015:2015"   # For admin API, if you need it
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  redis_data:
+  caddy_data:
+  caddy_config:
