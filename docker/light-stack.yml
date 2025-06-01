@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # ────────────────────────────────────────────────
+  # 1) Redis service
+  # ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--save", "60", "1"
+    ]
+
+  # ────────────────────────────────────────────────
+  # 2) VS Code in the browser (code-server)
+  # ────────────────────────────────────────────────
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code_server
+    restart: unless-stopped
+    env_file:
+      - ./envs/code-server.env
+    volumes:
+      - ./workspace:/home/coder/project   # your code lives here
+      - ./code-server/extensions:/home/coder/.local/share/code-server/extensions
+      - ./code-server/settings:/home/coder/.config/code-server
+    ports:
+      - "8443:8443"
+    # Optional: if you need sudo inside code-server, add capabilities or use a custom Dockerfile to create a dev user.
+
+  # ────────────────────────────────────────────────
+  # 3) “Dev” container: Python + Node + LangChain + AI SDKs
+  # ────────────────────────────────────────────────
+  dev:
+    build:
+      context: ./dev_container
+      dockerfile: Dockerfile
+    container_name: cbw_fullstack_dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+    ports:
+      - "8000:8000"     # FastAPI / Django dev server
+      - "3000:3000"     # React/Vue frontend (if you run npm start)
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NODE_ENV=development
+
+  # ────────────────────────────────────────────────
+  # 4) Traefik or Caddy as a reverse proxy
+  # ────────────────────────────────────────────────
+  traefik:
+    image: traefik:v2.13
+    container_name: traefik_proxy
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=you@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    restart: unless-stopped
+
+volumes:
+  redis_data:
