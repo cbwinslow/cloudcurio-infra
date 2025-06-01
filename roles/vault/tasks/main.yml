@@ -1,0 +1,46 @@
+# File: infra/ansible/roles/vault/tasks/main.yml
+
+- name: Add HashiCorp GPG key
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+
+- name: Add HashiCorp APT repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    filename: hashicorp
+
+- name: Install vault package
+  apt:
+    name: vault
+    state: present
+    update_cache: yes
+
+- name: Create systemd unit file for Vault (dev mode)
+  copy:
+    dest: /etc/systemd/system/vault.service
+    content: |
+      [Unit]
+      Description=Vault Server (dev mode)
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/bin/vault server -dev -dev-listen-address=0.0.0.0:8200
+      User=root
+      Group=root
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and start vault service
+  systemd:
+    name: vault.service
+    enabled: yes
+    state: started
+
+- name: Wait for Vault to become available
+  wait_for:
+    host: 127.0.0.1
+    port: 8200
+    timeout: 30
