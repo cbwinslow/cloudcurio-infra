@@ -1,0 +1,13 @@
+name: Codex Explainer
+on:
+  pull_request:
+    types: [opened]
+jobs:
+  codex-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+      - name: AI Code Explanation
+        run: |
+          echo "📢 Running LLM to generate explanations of new code..."

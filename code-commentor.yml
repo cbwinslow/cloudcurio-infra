@@ -1,0 +1,14 @@
+name: GPT Code Commentor
+on:
+  pull_request:
+    types: [opened]
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+      - name: GPT Codex Commentor
+        run: |
+          echo "🧠 Commenting on the PR with AI..."
+          # You can call your own hosted GPT server or use openrouter.ai here

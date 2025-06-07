@@ -1,0 +1,17 @@
+name: Auto PR Creator
+on:
+  push:
+    branches:
+      - feature/**
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "✨ Auto PR from feature branch"
+          title: "Auto PR: ${{ github.ref_name }}"
+          body: "This PR was automatically generated."
