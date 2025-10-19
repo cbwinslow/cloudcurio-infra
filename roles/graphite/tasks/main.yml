@@ -1,0 +1,28 @@
+---
+# roles/graphite/tasks/main.yml
+- name: Pull Graphite Docker image
+  docker_image:
+    name: graphiteapp/graphite-statsd:latest
+    source: pull
+
+- name: Create Graphite data directory
+  file:
+    path: /opt/graphite
+    state: directory
+
+- name: Create Graphite container
+  docker_container:
+    name: graphite
+    image: graphiteapp/graphite-statsd:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "80:80"
+      - "2003:2003"
+      - "2004:2004"
+      - "2023:2023"
+      - "2024:2024"
+      - "8125:8125/udp"
+      - "8126:8126"
+    volumes:
+      - /opt/graphite:/opt/graphite/storage
