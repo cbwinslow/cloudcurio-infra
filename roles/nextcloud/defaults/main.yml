@@ -1,0 +1,4 @@
+---
+nextcloud_version: "27"
+nextcloud_admin_user: admin
+nextcloud_admin_password: changeme

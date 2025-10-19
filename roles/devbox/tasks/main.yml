@@ -1,0 +1,7 @@
+---
+# roles/devbox/tasks/main.yml
+- name: Install Devbox
+  shell: curl -fsSL https://get.jetpack.io/devbox | bash
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/share/devbox"
+  become: no

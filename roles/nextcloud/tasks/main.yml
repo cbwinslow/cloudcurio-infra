@@ -1,0 +1,22 @@
+---
+# roles/nextcloud/tasks/main.yml
+- name: Pull Nextcloud Docker image
+  docker_image:
+    name: "nextcloud:{{ nextcloud_version }}"
+    source: pull
+
+- name: Create Nextcloud data directory
+  file:
+    path: /opt/nextcloud
+    state: directory
+
+- name: Create Nextcloud container
+  docker_container:
+    name: nextcloud
+    image: "nextcloud:{{ nextcloud_version }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "8081:80"
+    volumes:
+      - /opt/nextcloud:/var/www/html

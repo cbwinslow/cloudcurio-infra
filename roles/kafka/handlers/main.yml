@@ -1,0 +1,5 @@
+---
+# roles/kafka/handlers/main.yml
+- name: reload systemd
+  systemd:
+    daemon_reload: yes

@@ -1,0 +1,27 @@
+---
+# roles/terraform/tasks/main.yml
+- name: Add HashiCorp GPG key
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+
+- name: Add HashiCorp repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+    filename: hashicorp
+
+- name: Install Terraform
+  apt:
+    name: terraform
+    state: present
+    update_cache: yes
+
+- name: Verify Terraform installation
+  command: terraform version
+  register: terraform_check
+  changed_when: false
+
+- name: Display Terraform version
+  debug:
+    var: terraform_check.stdout

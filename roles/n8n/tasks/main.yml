@@ -1,0 +1,24 @@
+---
+# roles/n8n/tasks/main.yml
+- name: Pull n8n Docker image
+  docker_image:
+    name: n8nio/n8n:latest
+    source: pull
+
+- name: Create n8n data directory
+  file:
+    path: /opt/n8n
+    state: directory
+
+- name: Create n8n container
+  docker_container:
+    name: n8n
+    image: n8nio/n8n:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ n8n_port }}:5678"
+    volumes:
+      - /opt/n8n:/home/node/.n8n
+    env:
+      N8N_ENCRYPTION_KEY: "{{ n8n_encryption_key }}"

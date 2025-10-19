@@ -1,0 +1,3 @@
+---
+n8n_port: 5678
+n8n_encryption_key: changeme

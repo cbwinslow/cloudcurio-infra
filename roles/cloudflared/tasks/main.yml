@@ -1,0 +1,23 @@
+---
+# roles/cloudflared/tasks/main.yml
+- name: Add Cloudflare GPG key
+  apt_key:
+    url: https://pkg.cloudflare.com/cloudflare-main.gpg
+    state: present
+
+- name: Add Cloudflare repository
+  apt_repository:
+    repo: "deb https://pkg.cloudflare.com/cloudflared {{ ansible_distribution_release }} main"
+    state: present
+    filename: cloudflared
+
+- name: Install cloudflared
+  apt:
+    name: cloudflared
+    state: present
+    update_cache: yes
+
+- name: Configure cloudflared tunnel
+  command: "cloudflared tunnel login"
+  when: cloudflared_tunnel_token is defined and cloudflared_tunnel_token != ""
+  ignore_errors: yes

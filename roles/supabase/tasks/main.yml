@@ -1,0 +1,17 @@
+---
+# roles/supabase/tasks/main.yml
+- name: Clone Supabase repository
+  git:
+    repo: https://github.com/supabase/supabase.git
+    dest: /opt/supabase
+    version: master
+  ignore_errors: yes
+
+- name: Pull Supabase Docker images
+  docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop:
+    - supabase/postgres:latest
+    - supabase/studio:latest
+  ignore_errors: yes

@@ -1,0 +1,6 @@
+---
+# roles/gitpod/tasks/main.yml
+- name: Install Gitpod CLI
+  shell: curl -fsSL https://gitpod.io/static/bin/gitpod-cli-linux-amd64 -o /usr/local/bin/gitpod && chmod +x /usr/local/bin/gitpod
+  args:
+    creates: /usr/local/bin/gitpod

@@ -1,0 +1,8 @@
+---
+# roles/openrouter-sdk/tasks/main.yml
+- name: Install OpenRouter SDK
+  pip:
+    name: openrouter
+    state: present
+    executable: pip3
+  ignore_errors: yes

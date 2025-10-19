@@ -1,0 +1,22 @@
+---
+# roles/uptime-kuma/tasks/main.yml
+- name: Pull Uptime Kuma Docker image
+  docker_image:
+    name: louislam/uptime-kuma:latest
+    source: pull
+
+- name: Create Uptime Kuma data directory
+  file:
+    path: /opt/uptime-kuma
+    state: directory
+
+- name: Create Uptime Kuma container
+  docker_container:
+    name: uptime-kuma
+    image: louislam/uptime-kuma:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ uptime_kuma_port }}:3001"
+    volumes:
+      - /opt/uptime-kuma:/app/data

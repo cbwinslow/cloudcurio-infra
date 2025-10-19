@@ -1,0 +1,22 @@
+---
+# roles/openssh/tasks/main.yml
+- name: Install OpenSSH Server
+  apt:
+    name:
+      - openssh-server
+      - openssh-client
+    state: present
+    update_cache: yes
+
+- name: Enable and start SSH service
+  systemd:
+    name: ssh
+    enabled: yes
+    state: started
+
+- name: Configure SSH to allow password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication yes'
+  notify: restart sshd

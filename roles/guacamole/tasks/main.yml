@@ -1,0 +1,27 @@
+---
+# roles/guacamole/tasks/main.yml
+- name: Pull Guacamole Docker images
+  docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop:
+    - guacamole/guacd:latest
+    - guacamole/guacamole:latest
+
+- name: Create Guacamole guacd container
+  docker_container:
+    name: guacd
+    image: guacamole/guacd:latest
+    state: started
+    restart_policy: always
+
+- name: Create Guacamole container
+  docker_container:
+    name: guacamole
+    image: guacamole/guacamole:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ guacamole_port }}:8080"
+    links:
+      - guacd:guacd

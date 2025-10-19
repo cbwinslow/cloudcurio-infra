@@ -1,0 +1,16 @@
+---
+# roles/agent-zero/tasks/main.yml
+- name: Install Agent Zero dependencies
+  pip:
+    name:
+      - agent-zero
+    state: present
+    executable: pip3
+  ignore_errors: yes
+
+- name: Clone Agent Zero repository
+  git:
+    repo: https://github.com/frdel/agent-zero.git
+    dest: /opt/agent-zero
+    version: main
+  ignore_errors: yes

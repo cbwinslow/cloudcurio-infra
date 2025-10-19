@@ -1,0 +1,14 @@
+---
+# roles/localrecall/tasks/main.yml
+- name: Clone LocalRecall repository
+  git:
+    repo: https://github.com/muddler/LocalRecall.git
+    dest: /opt/localrecall
+    version: main
+  ignore_errors: yes
+
+- name: Install LocalRecall dependencies
+  pip:
+    requirements: /opt/localrecall/requirements.txt
+    state: present
+  ignore_errors: yes

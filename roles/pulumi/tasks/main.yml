@@ -1,0 +1,14 @@
+---
+# roles/pulumi/tasks/main.yml
+- name: Install Pulumi
+  shell: curl -fsSL https://get.pulumi.com | sh
+  args:
+    creates: "{{ ansible_env.HOME }}/.pulumi/bin/pulumi"
+  become: no
+
+- name: Add Pulumi to PATH
+  lineinfile:
+    path: /etc/profile.d/pulumi.sh
+    line: 'export PATH="$HOME/.pulumi/bin:$PATH"'
+    create: yes
+    mode: '0644'

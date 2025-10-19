@@ -1,0 +1,6 @@
+---
+vscode_extensions:
+  - ms-python.python
+  - ms-azuretools.vscode-docker
+  - hashicorp.terraform
+  - redhat.ansible

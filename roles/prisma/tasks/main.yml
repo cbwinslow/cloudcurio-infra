@@ -1,0 +1,13 @@
+---
+# roles/prisma/tasks/main.yml
+- name: Install Prisma CLI
+  npm:
+    name: prisma
+    global: yes
+    state: present
+
+- name: Install Prisma Client
+  npm:
+    name: "@prisma/client"
+    global: yes
+    state: present

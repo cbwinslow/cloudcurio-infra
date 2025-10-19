@@ -1,0 +1,12 @@
+---
+# roles/vscode-server/tasks/main.yml
+- name: Install code-server (VS Code Server)
+  shell: curl -fsSL https://code-server.dev/install.sh | sh
+  args:
+    creates: /usr/bin/code-server
+
+- name: Enable and start code-server
+  systemd:
+    name: code-server@{{ ansible_user }}
+    enabled: yes
+    state: started

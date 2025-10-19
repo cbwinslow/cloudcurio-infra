@@ -1,0 +1,7 @@
+---
+# roles/gemini-cli/tasks/main.yml
+- name: Install Gemini CLI
+  pip:
+    name: google-generativeai
+    state: present
+    executable: pip3

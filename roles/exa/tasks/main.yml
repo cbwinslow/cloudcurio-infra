@@ -1,0 +1,7 @@
+---
+# roles/exa/tasks/main.yml
+- name: Install exa (modern ls replacement)
+  apt:
+    name: exa
+    state: present
+    update_cache: yes

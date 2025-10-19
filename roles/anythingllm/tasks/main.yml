@@ -1,0 +1,22 @@
+---
+# roles/anythingllm/tasks/main.yml
+- name: Pull AnythingLLM Docker image
+  docker_image:
+    name: mintplexlabs/anythingllm:latest
+    source: pull
+
+- name: Create AnythingLLM data directory
+  file:
+    path: /opt/anythingllm
+    state: directory
+
+- name: Create AnythingLLM container
+  docker_container:
+    name: anythingllm
+    image: mintplexlabs/anythingllm:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ anythingllm_port }}:3001"
+    volumes:
+      - /opt/anythingllm:/app/server/storage

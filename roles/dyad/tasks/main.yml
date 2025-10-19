@@ -1,0 +1,8 @@
+---
+# roles/dyad/tasks/main.yml
+- name: Clone Dyad repository
+  git:
+    repo: https://github.com/dyad-ai/dyad.git
+    dest: /opt/dyad
+    version: main
+  ignore_errors: yes

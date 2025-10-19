@@ -1,0 +1,23 @@
+---
+# roles/gitea/tasks/main.yml
+- name: Pull Gitea Docker image
+  docker_image:
+    name: "gitea/gitea:{{ gitea_version }}"
+    source: pull
+
+- name: Create Gitea data directory
+  file:
+    path: /opt/gitea
+    state: directory
+
+- name: Create Gitea container
+  docker_container:
+    name: gitea
+    image: "gitea/gitea:{{ gitea_version }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "3000:3000"
+      - "2223:22"
+    volumes:
+      - /opt/gitea:/data

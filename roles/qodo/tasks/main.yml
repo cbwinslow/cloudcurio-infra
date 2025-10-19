@@ -1,0 +1,13 @@
+---
+# roles/qodo/tasks/main.yml
+- name: Install Qodo (formerly Codiumai)
+  pip:
+    name: qodo
+    state: present
+    executable: pip3
+  ignore_errors: yes
+
+- name: Install Qodo VS Code extension
+  become: no
+  command: code --install-extension Qodo.qodo
+  ignore_errors: yes

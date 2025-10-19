@@ -1,0 +1,16 @@
+---
+# roles/cockpit/tasks/main.yml
+- name: Install Cockpit
+  apt:
+    name:
+      - cockpit
+      - cockpit-docker
+      - cockpit-podman
+    state: present
+    update_cache: yes
+
+- name: Enable and start Cockpit service
+  systemd:
+    name: cockpit.socket
+    enabled: yes
+    state: started

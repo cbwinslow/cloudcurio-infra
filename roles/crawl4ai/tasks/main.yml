@@ -1,0 +1,8 @@
+---
+# roles/crawl4ai/tasks/main.yml
+- name: Install Crawl4AI
+  pip:
+    name: crawl4ai
+    state: present
+    executable: pip3
+  ignore_errors: yes

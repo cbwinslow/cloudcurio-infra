@@ -1,0 +1,18 @@
+---
+# roles/zed/tasks/main.yml
+- name: Download Zed editor
+  get_url:
+    url: "https://zed.dev/api/releases/stable/latest/zed-linux-x86_64.tar.gz"
+    dest: /tmp/zed.tar.gz
+
+- name: Extract Zed
+  unarchive:
+    src: /tmp/zed.tar.gz
+    dest: /opt
+    remote_src: yes
+
+- name: Create Zed symlink
+  file:
+    src: /opt/zed/bin/zed
+    dest: /usr/local/bin/zed
+    state: link

@@ -1,0 +1,31 @@
+---
+# roles/gitlab/tasks/main.yml
+- name: Pull GitLab Docker image
+  docker_image:
+    name: "gitlab/gitlab-ce:{{ gitlab_version }}"
+    source: pull
+
+- name: Create GitLab directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /opt/gitlab/config
+    - /opt/gitlab/logs
+    - /opt/gitlab/data
+
+- name: Create GitLab container
+  docker_container:
+    name: gitlab
+    image: "gitlab/gitlab-ce:{{ gitlab_version }}"
+    state: started
+    restart_policy: always
+    hostname: gitlab.local
+    ports:
+      - "8083:80"
+      - "8443:443"
+      - "2222:22"
+    volumes:
+      - /opt/gitlab/config:/etc/gitlab
+      - /opt/gitlab/logs:/var/log/gitlab
+      - /opt/gitlab/data:/var/opt/gitlab

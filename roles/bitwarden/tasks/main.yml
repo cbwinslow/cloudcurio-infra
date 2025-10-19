@@ -1,0 +1,23 @@
+---
+# roles/bitwarden/tasks/main.yml
+- name: Pull Bitwarden (Vaultwarden) Docker image
+  docker_image:
+    name: vaultwarden/server:latest
+    source: pull
+
+- name: Create Bitwarden data directory
+  file:
+    path: /opt/bitwarden
+    state: directory
+    mode: '0755'
+
+- name: Create Bitwarden container
+  docker_container:
+    name: bitwarden
+    image: vaultwarden/server:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8200:80"
+    volumes:
+      - /opt/bitwarden:/data

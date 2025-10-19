@@ -1,0 +1,21 @@
+---
+# roles/windsurf/tasks/main.yml
+- name: Download Windsurf IDE
+  get_url:
+    url: "https://windsurf-stable.codeiumdata.com/linux-x64/stable"
+    dest: /tmp/windsurf.tar.gz
+  ignore_errors: yes
+
+- name: Extract Windsurf
+  unarchive:
+    src: /tmp/windsurf.tar.gz
+    dest: /opt
+    remote_src: yes
+  ignore_errors: yes
+
+- name: Create Windsurf symlink
+  file:
+    src: /opt/windsurf/bin/windsurf
+    dest: /usr/local/bin/windsurf
+    state: link
+  ignore_errors: yes

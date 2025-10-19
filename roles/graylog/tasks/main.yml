@@ -1,0 +1,27 @@
+---
+# roles/graylog/tasks/main.yml
+- name: Install Java (required for Graylog)
+  apt:
+    name: openjdk-11-jdk
+    state: present
+
+- name: Download Graylog repository package
+  get_url:
+    url: "https://packages.graylog2.org/repo/packages/graylog-5.1-repository_latest.deb"
+    dest: /tmp/graylog-repo.deb
+
+- name: Install Graylog repository
+  apt:
+    deb: /tmp/graylog-repo.deb
+
+- name: Install Graylog
+  apt:
+    name: graylog-server
+    state: present
+    update_cache: yes
+
+- name: Enable and start Graylog service
+  systemd:
+    name: graylog-server
+    enabled: yes
+    state: started

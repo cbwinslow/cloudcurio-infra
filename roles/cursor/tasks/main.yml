@@ -1,0 +1,17 @@
+---
+# roles/cursor/tasks/main.yml
+- name: Download Cursor AppImage
+  get_url:
+    url: "https://download.cursor.sh/linux/appImage/x64"
+    dest: /opt/cursor.AppImage
+    mode: '0755'
+
+- name: Create Cursor desktop entry
+  copy:
+    dest: /usr/share/applications/cursor.desktop
+    content: |
+      [Desktop Entry]
+      Name=Cursor
+      Exec=/opt/cursor.AppImage
+      Type=Application
+      Categories=Development;IDE;

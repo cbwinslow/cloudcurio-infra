@@ -1,0 +1,7 @@
+---
+# roles/devpod/tasks/main.yml
+- name: Download DevPod
+  get_url:
+    url: "https://github.com/loft-sh/devpod/releases/latest/download/devpod-linux-amd64"
+    dest: /usr/local/bin/devpod
+    mode: '0755'

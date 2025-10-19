@@ -1,0 +1,14 @@
+---
+# roles/firecrawl/tasks/main.yml
+- name: Clone Firecrawl repository
+  git:
+    repo: https://github.com/mendableai/firecrawl.git
+    dest: /opt/firecrawl
+    version: main
+  ignore_errors: yes
+
+- name: Install Firecrawl dependencies
+  npm:
+    path: /opt/firecrawl
+    state: present
+  ignore_errors: yes

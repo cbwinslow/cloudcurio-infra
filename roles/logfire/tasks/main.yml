@@ -1,0 +1,7 @@
+---
+# roles/logfire/tasks/main.yml
+- name: Install Logfire Python package
+  pip:
+    name: logfire
+    state: present
+    executable: pip3

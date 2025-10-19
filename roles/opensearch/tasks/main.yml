@@ -1,0 +1,50 @@
+---
+# roles/opensearch/tasks/main.yml
+- name: Install Java (required for OpenSearch)
+  apt:
+    name: openjdk-11-jdk
+    state: present
+
+- name: Download OpenSearch
+  get_url:
+    url: "https://artifacts.opensearch.org/releases/bundle/opensearch/2.11.0/opensearch-2.11.0-linux-x64.tar.gz"
+    dest: /tmp/opensearch.tar.gz
+
+- name: Create OpenSearch user
+  user:
+    name: opensearch
+    system: yes
+    create_home: no
+
+- name: Extract OpenSearch
+  unarchive:
+    src: /tmp/opensearch.tar.gz
+    dest: /opt
+    remote_src: yes
+    owner: opensearch
+    group: opensearch
+
+- name: Create OpenSearch systemd service
+  copy:
+    dest: /etc/systemd/system/opensearch.service
+    content: |
+      [Unit]
+      Description=OpenSearch
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=opensearch
+      Group=opensearch
+      ExecStart=/opt/opensearch-2.11.0/bin/opensearch
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: reload systemd
+
+- name: Enable and start OpenSearch service
+  systemd:
+    name: opensearch
+    enabled: yes
+    state: started

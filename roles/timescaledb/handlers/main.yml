@@ -1,0 +1,6 @@
+---
+# roles/timescaledb/handlers/main.yml
+- name: restart postgresql
+  systemd:
+    name: postgresql
+    state: restarted

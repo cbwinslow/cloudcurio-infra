@@ -1,0 +1,9 @@
+---
+# roles/pydantic/tasks/main.yml
+- name: Install Pydantic
+  pip:
+    name:
+      - pydantic
+      - pydantic-settings
+    state: present
+    executable: pip3

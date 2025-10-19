@@ -1,0 +1,14 @@
+---
+# roles/localagi/tasks/main.yml
+- name: Clone LocalAGI repository
+  git:
+    repo: https://github.com/muddler/LocalAGI.git
+    dest: /opt/localagi
+    version: main
+  ignore_errors: yes
+
+- name: Install LocalAGI dependencies
+  pip:
+    requirements: /opt/localagi/requirements.txt
+    state: present
+  ignore_errors: yes

@@ -1,0 +1,13 @@
+---
+# roles/nextjs/tasks/main.yml
+- name: Install Next.js CLI
+  npm:
+    name: create-next-app
+    global: yes
+    state: present
+
+- name: Install Next.js
+  npm:
+    name: next
+    global: yes
+    state: present

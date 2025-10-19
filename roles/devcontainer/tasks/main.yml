@@ -1,0 +1,7 @@
+---
+# roles/devcontainer/tasks/main.yml
+- name: Install DevContainer CLI
+  npm:
+    name: "@devcontainers/cli"
+    global: yes
+    state: present

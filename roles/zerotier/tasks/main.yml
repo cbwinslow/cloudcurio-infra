@@ -1,0 +1,17 @@
+---
+# roles/zerotier/tasks/main.yml
+- name: Install ZeroTier
+  shell: curl -s https://install.zerotier.com | bash
+  args:
+    creates: /usr/sbin/zerotier-one
+
+- name: Enable and start ZeroTier
+  systemd:
+    name: zerotier-one
+    enabled: yes
+    state: started
+
+- name: Join ZeroTier network
+  command: "zerotier-cli join {{ zerotier_network_id }}"
+  when: zerotier_network_id is defined and zerotier_network_id != ""
+  ignore_errors: yes

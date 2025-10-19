@@ -1,0 +1,18 @@
+---
+# roles/jan/tasks/main.yml
+- name: Download Jan AppImage
+  get_url:
+    url: "https://github.com/janhq/jan/releases/latest/download/jan-linux-x86_64.AppImage"
+    dest: /opt/jan.AppImage
+    mode: '0755'
+  ignore_errors: yes
+
+- name: Create Jan desktop entry
+  copy:
+    dest: /usr/share/applications/jan.desktop
+    content: |
+      [Desktop Entry]
+      Name=Jan
+      Exec=/opt/jan.AppImage
+      Type=Application
+      Categories=Development;AI;

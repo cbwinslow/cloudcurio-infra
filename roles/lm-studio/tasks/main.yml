@@ -1,0 +1,18 @@
+---
+# roles/lm-studio/tasks/main.yml
+- name: Download LM Studio
+  get_url:
+    url: "https://releases.lmstudio.ai/linux/x86/latest/LM-Studio-Linux-x86_64.AppImage"
+    dest: /opt/lm-studio.AppImage
+    mode: '0755'
+  ignore_errors: yes
+
+- name: Create LM Studio desktop entry
+  copy:
+    dest: /usr/share/applications/lm-studio.desktop
+    content: |
+      [Desktop Entry]
+      Name=LM Studio
+      Exec=/opt/lm-studio.AppImage
+      Type=Application
+      Categories=Development;AI;

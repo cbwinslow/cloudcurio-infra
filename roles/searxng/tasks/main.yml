@@ -1,0 +1,22 @@
+---
+# roles/searxng/tasks/main.yml
+- name: Pull SearXNG Docker image
+  docker_image:
+    name: searxng/searxng:latest
+    source: pull
+
+- name: Create SearXNG config directory
+  file:
+    path: /opt/searxng
+    state: directory
+
+- name: Create SearXNG container
+  docker_container:
+    name: searxng
+    image: searxng/searxng:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ searxng_port }}:8080"
+    volumes:
+      - /opt/searxng:/etc/searxng

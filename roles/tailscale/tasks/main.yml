@@ -1,0 +1,29 @@
+---
+# roles/tailscale/tasks/main.yml
+- name: Add Tailscale GPG key
+  apt_key:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.noarmor.gpg
+    state: present
+
+- name: Add Tailscale repository
+  apt_repository:
+    repo: "deb https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: tailscale
+
+- name: Install Tailscale
+  apt:
+    name: tailscale
+    state: present
+    update_cache: yes
+
+- name: Enable and start Tailscale
+  systemd:
+    name: tailscaled
+    enabled: yes
+    state: started
+
+- name: Authenticate Tailscale
+  command: "tailscale up --authkey={{ tailscale_authkey }}"
+  when: tailscale_authkey is defined and tailscale_authkey != ""
+  ignore_errors: yes

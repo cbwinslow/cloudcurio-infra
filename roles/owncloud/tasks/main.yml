@@ -1,0 +1,22 @@
+---
+# roles/owncloud/tasks/main.yml
+- name: Pull OwnCloud Docker image
+  docker_image:
+    name: owncloud/server:latest
+    source: pull
+
+- name: Create OwnCloud data directory
+  file:
+    path: /opt/owncloud
+    state: directory
+
+- name: Create OwnCloud container
+  docker_container:
+    name: owncloud
+    image: owncloud/server:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8082:8080"
+    volumes:
+      - /opt/owncloud:/mnt/data
