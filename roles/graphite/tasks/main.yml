@@ -1,23 +1,26 @@
 ---
 # roles/graphite/tasks/main.yml
 - name: Pull Graphite Docker image
-  docker_image:
-    name: graphiteapp/graphite-statsd:latest
+  community.docker.docker_image:
+    name: "graphiteapp/graphite-statsd:{{ graphite_image_version }}"
     source: pull
 
 - name: Create Graphite data directory
   file:
-    path: /opt/graphite
+    path: "{{ graphite_data_dir }}"
     state: directory
+    owner: root
+    group: root
+    mode: '0755'
 
 - name: Create Graphite container
-  docker_container:
+  community.docker.docker_container:
     name: graphite
-    image: graphiteapp/graphite-statsd:latest
+    image: "graphiteapp/graphite-statsd:{{ graphite_image_version }}"
     state: started
     restart_policy: always
     ports:
-      - "80:80"
+      - "{{ graphite_port }}:80"
       - "2003:2003"
       - "2004:2004"
       - "2023:2023"
@@ -25,4 +28,4 @@
       - "8125:8125/udp"
       - "8126:8126"
     volumes:
-      - /opt/graphite:/opt/graphite/storage
+      - "{{ graphite_data_dir }}:/opt/graphite/storage"

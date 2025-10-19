@@ -75,6 +75,8 @@ prometheus_retention: "15d"
 
 loki_port: 3100
 
+graphite_port: 8085
+
 # Infrastructure Tools
 terraform_version: "1.6.0"
 pulumi_version: "latest"

@@ -1,2 +1,4 @@
 ---
-# Empty defaults
+graphite_port: 8085
+graphite_data_dir: /opt/graphite
+graphite_image_version: latest
