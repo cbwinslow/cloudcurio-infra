@@ -1,0 +1,22 @@
+---
+# roles/timescaledb/tasks/main.yml
+- name: Add TimescaleDB repository
+  shell: |
+    echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main" | tee /etc/apt/sources.list.d/timescaledb.list
+  args:
+    creates: /etc/apt/sources.list.d/timescaledb.list
+
+- name: Add TimescaleDB GPG key
+  apt_key:
+    url: https://packagecloud.io/timescale/timescaledb/gpgkey
+    state: present
+
+- name: Install TimescaleDB
+  apt:
+    name: timescaledb-2-postgresql-15
+    state: present
+    update_cache: yes
+
+- name: Configure TimescaleDB
+  command: timescaledb-tune --quiet --yes
+  notify: restart postgresql

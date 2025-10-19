@@ -1,0 +1,10 @@
+---
+python_version: "3.11"
+python_packages:
+  - pip
+  - virtualenv
+  - pipenv
+  - poetry
+  - black
+  - flake8
+  - pytest

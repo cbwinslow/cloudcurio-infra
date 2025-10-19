@@ -1,0 +1,6 @@
+---
+ollama_models:
+  - llama2
+  - codellama
+  - mistral
+ollama_gpu_enable: false

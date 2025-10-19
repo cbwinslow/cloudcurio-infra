@@ -1,0 +1,26 @@
+---
+# roles/clickhouse/tasks/main.yml
+- name: Add ClickHouse GPG key
+  apt_key:
+    url: https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key
+    state: present
+
+- name: Add ClickHouse repository
+  apt_repository:
+    repo: "deb https://packages.clickhouse.com/deb stable main"
+    state: present
+    filename: clickhouse
+
+- name: Install ClickHouse
+  apt:
+    name:
+      - clickhouse-server
+      - clickhouse-client
+    state: present
+    update_cache: yes
+
+- name: Enable and start ClickHouse service
+  systemd:
+    name: clickhouse-server
+    enabled: yes
+    state: started

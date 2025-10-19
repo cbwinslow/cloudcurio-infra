@@ -1,0 +1,43 @@
+---
+# roles/localai/tasks/main.yml
+- name: Create LocalAI directory
+  file:
+    path: /opt/localai
+    state: directory
+    mode: '0755'
+
+- name: Download LocalAI
+  get_url:
+    url: "https://github.com/mudler/LocalAI/releases/latest/download/local-ai-Linux-x86_64"
+    dest: /opt/localai/local-ai
+    mode: '0755'
+
+- name: Create LocalAI models directory
+  file:
+    path: /opt/localai/models
+    state: directory
+    mode: '0755'
+
+- name: Create LocalAI systemd service
+  copy:
+    dest: /etc/systemd/system/localai.service
+    content: |
+      [Unit]
+      Description=LocalAI Service
+      After=network.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/localai
+      ExecStart=/opt/localai/local-ai --models-path=/opt/localai/models
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: reload systemd
+
+- name: Enable and start LocalAI service
+  systemd:
+    name: localai
+    enabled: yes
+    state: started

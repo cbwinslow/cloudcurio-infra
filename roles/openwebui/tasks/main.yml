@@ -1,0 +1,19 @@
+---
+# roles/openwebui/tasks/main.yml
+- name: Pull Open WebUI Docker image
+  docker_image:
+    name: ghcr.io/open-webui/open-webui:main
+    source: pull
+
+- name: Create Open WebUI container
+  docker_container:
+    name: open-webui
+    image: ghcr.io/open-webui/open-webui:main
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ openwebui_port }}:8080"
+    volumes:
+      - /opt/open-webui:/app/backend/data
+    env:
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"

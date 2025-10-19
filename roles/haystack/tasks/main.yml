@@ -1,0 +1,9 @@
+---
+# roles/haystack/tasks/main.yml
+- name: Install Haystack Python package
+  pip:
+    name:
+      - farm-haystack
+      - sentence-transformers
+    state: present
+    executable: pip3

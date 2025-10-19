@@ -1,0 +1,34 @@
+---
+# roles/mysql/tasks/main.yml
+- name: Install MySQL server
+  apt:
+    name:
+      - "mysql-server-{{ mysql_version }}"
+      - mysql-client
+      - python3-pymysql
+    state: present
+    update_cache: yes
+
+- name: Enable and start MySQL service
+  systemd:
+    name: mysql
+    enabled: yes
+    state: started
+
+- name: Create MySQL databases
+  mysql_db:
+    name: "{{ item.name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  loop: "{{ mysql_databases }}"
+  when: mysql_databases is defined
+
+- name: Create MySQL users
+  mysql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    priv: "{{ item.priv | default('*.*:ALL') }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  loop: "{{ mysql_users }}"
+  when: mysql_users is defined

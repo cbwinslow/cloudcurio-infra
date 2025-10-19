@@ -1,0 +1,10 @@
+---
+nodejs_version: "20"
+npm_global_packages:
+  - typescript
+  - npm
+  - yarn
+  - pnpm
+  - eslint
+  - prettier
+  - pm2

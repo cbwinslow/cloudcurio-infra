@@ -1,0 +1,21 @@
+---
+# roles/nodejs/tasks/main.yml
+- name: Install Node.js repository
+  shell: |
+    curl -fsSL https://deb.nodesource.com/setup_{{ nodejs_version }}.x | bash -
+  args:
+    creates: /etc/apt/sources.list.d/nodesource.list
+
+- name: Install Node.js
+  apt:
+    name: nodejs
+    state: present
+    update_cache: yes
+
+- name: Install global npm packages
+  npm:
+    name: "{{ item }}"
+    global: yes
+    state: present
+  loop: "{{ npm_global_packages }}"
+  when: npm_global_packages is defined

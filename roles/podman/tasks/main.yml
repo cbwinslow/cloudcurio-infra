@@ -1,0 +1,16 @@
+---
+# roles/podman/tasks/main.yml
+- name: Install Podman
+  apt:
+    name:
+      - podman
+      - podman-compose
+    state: present
+    update_cache: yes
+
+- name: Enable and start podman socket
+  systemd:
+    name: podman.socket
+    enabled: yes
+    state: started
+  ignore_errors: yes

@@ -1,0 +1,31 @@
+---
+# roles/flowise/tasks/main.yml
+- name: Install Flowise globally via npm
+  npm:
+    name: flowise
+    global: yes
+    state: present
+
+- name: Create Flowise systemd service
+  copy:
+    dest: /etc/systemd/system/flowise.service
+    content: |
+      [Unit]
+      Description=Flowise Service
+      After=network.target
+
+      [Service]
+      Type=simple
+      ExecStart=/usr/bin/npx flowise start
+      Restart=on-failure
+      Environment="PORT={{ flowise_port }}"
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: reload systemd
+
+- name: Enable and start Flowise service
+  systemd:
+    name: flowise
+    enabled: yes
+    state: started

@@ -1,0 +1,60 @@
+---
+# roles/traefik/tasks/main.yml
+- name: Download Traefik
+  get_url:
+    url: "https://github.com/traefik/traefik/releases/latest/download/traefik_linux_amd64.tar.gz"
+    dest: /tmp/traefik.tar.gz
+
+- name: Extract Traefik
+  unarchive:
+    src: /tmp/traefik.tar.gz
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0755'
+
+- name: Create Traefik configuration directory
+  file:
+    path: /etc/traefik
+    state: directory
+    mode: '0755'
+
+- name: Create Traefik systemd service
+  copy:
+    dest: /etc/systemd/system/traefik.service
+    content: |
+      [Unit]
+      Description=Traefik
+      After=network.target
+
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/traefik --configFile=/etc/traefik/traefik.yml
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: reload systemd
+
+- name: Create basic Traefik configuration
+  copy:
+    dest: /etc/traefik/traefik.yml
+    content: |
+      entryPoints:
+        web:
+          address: ":80"
+        websecure:
+          address: ":443"
+      
+      api:
+        dashboard: true
+        insecure: true
+      
+      providers:
+        docker:
+          exposedByDefault: false
+
+- name: Enable and start Traefik service
+  systemd:
+    name: traefik
+    enabled: yes
+    state: started

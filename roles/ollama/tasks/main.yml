@@ -1,0 +1,36 @@
+---
+# roles/ollama/tasks/main.yml
+- name: Install Ollama
+  shell: curl -fsSL https://ollama.ai/install.sh | sh
+  args:
+    creates: /usr/local/bin/ollama
+
+- name: Create Ollama systemd service
+  copy:
+    dest: /etc/systemd/system/ollama.service
+    content: |
+      [Unit]
+      Description=Ollama Service
+      After=network.target
+
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/ollama serve
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: reload systemd
+
+- name: Enable and start Ollama service
+  systemd:
+    name: ollama
+    enabled: yes
+    state: started
+
+- name: Pull Ollama models
+  command: "ollama pull {{ item }}"
+  loop: "{{ ollama_models }}"
+  when: ollama_models is defined
+  async: 600
+  poll: 0

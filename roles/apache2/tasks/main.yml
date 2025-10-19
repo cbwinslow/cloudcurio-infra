@@ -1,0 +1,27 @@
+---
+# roles/apache2/tasks/main.yml
+- name: Install Apache2
+  apt:
+    name:
+      - apache2
+      - apache2-utils
+    state: present
+    update_cache: yes
+
+- name: Enable Apache2 modules
+  apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - rewrite
+    - ssl
+    - proxy
+    - proxy_http
+    - headers
+  notify: restart apache2
+
+- name: Enable and start Apache2 service
+  systemd:
+    name: apache2
+    enabled: yes
+    state: started

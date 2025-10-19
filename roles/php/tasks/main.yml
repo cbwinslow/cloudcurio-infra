@@ -1,0 +1,27 @@
+---
+# roles/php/tasks/main.yml
+- name: Install PHP and common extensions
+  apt:
+    name:
+      - php
+      - php-cli
+      - php-fpm
+      - php-mysql
+      - php-pgsql
+      - php-sqlite3
+      - php-curl
+      - php-gd
+      - php-mbstring
+      - php-xml
+      - php-zip
+      - php-bcmath
+      - composer
+    state: present
+    update_cache: yes
+
+- name: Enable and start PHP-FPM service
+  systemd:
+    name: "php{{ ansible_distribution_version.split('.')[0] }}.{{ ansible_distribution_version.split('.')[1] }}-fpm"
+    enabled: yes
+    state: started
+  ignore_errors: yes

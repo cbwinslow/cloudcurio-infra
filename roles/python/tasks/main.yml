@@ -1,0 +1,34 @@
+---
+# roles/python/tasks/main.yml
+- name: Install Python and dependencies
+  apt:
+    name:
+      - "python{{ python_version }}"
+      - "python{{ python_version }}-dev"
+      - "python{{ python_version }}-venv"
+      - python3-pip
+      - build-essential
+      - libssl-dev
+      - libffi-dev
+    state: present
+    update_cache: yes
+
+- name: Ensure pip is up to date
+  pip:
+    name: pip
+    state: latest
+    executable: pip3
+
+- name: Install Python packages
+  pip:
+    name: "{{ python_packages }}"
+    state: present
+    executable: pip3
+  when: python_packages is defined
+
+- name: Create symbolic link for python
+  file:
+    src: "/usr/bin/python{{ python_version }}"
+    dest: /usr/bin/python
+    state: link
+  ignore_errors: yes

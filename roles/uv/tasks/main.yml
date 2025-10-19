@@ -1,0 +1,14 @@
+---
+# roles/uv/tasks/main.yml
+- name: Install UV (Python package manager)
+  shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+  args:
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/uv"
+  become: no
+
+- name: Add UV to system PATH
+  lineinfile:
+    path: /etc/profile.d/uv.sh
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    create: yes
+    mode: '0644'

@@ -1,0 +1,126 @@
+---
+# Master site playbook - orchestrates all infrastructure deployment
+- name: CloudCurio Base Bootstrap
+  hosts: cloudcurio
+  become: yes
+  roles:
+    - cloudcurio-node-bootstrap
+
+- name: DevOps Tools Installation
+  hosts: devops
+  become: yes
+  roles:
+    # Programming Languages & Runtimes
+    - { role: python, tags: ['python', 'lang'] }
+    - { role: uv, tags: ['uv', 'python'] }
+    - { role: nodejs, tags: ['nodejs', 'lang'] }
+    - { role: php, tags: ['php', 'lang'] }
+    
+    # Container & Orchestration
+    - { role: docker, tags: ['docker', 'container'] }
+    - { role: docker-compose, tags: ['docker-compose', 'container'] }
+    - { role: podman, tags: ['podman', 'container'] }
+    
+    # Databases
+    - { role: postgresql, tags: ['postgresql', 'database'] }
+    - { role: mysql, tags: ['mysql', 'database'] }
+    - { role: clickhouse, tags: ['clickhouse', 'database'] }
+    - { role: influxdb, tags: ['influxdb', 'database'] }
+    - { role: timescaledb, tags: ['timescaledb', 'database'] }
+    - { role: victoriametrics, tags: ['victoriametrics', 'database'] }
+    
+    # Web Servers & Reverse Proxies
+    - { role: nginx, tags: ['nginx', 'webserver'] }
+    - { role: apache2, tags: ['apache2', 'webserver'] }
+    - { role: caddy, tags: ['caddy', 'webserver'] }
+    - { role: traefik, tags: ['traefik', 'proxy'] }
+    
+    # AI/ML Tools
+    - { role: ollama, tags: ['ollama', 'ai'] }
+    - { role: localai, tags: ['localai', 'ai'] }
+    - { role: openwebui, tags: ['openwebui', 'ai'] }
+    - { role: flowise, tags: ['flowise', 'ai'] }
+    - { role: haystack, tags: ['haystack', 'ai'] }
+    
+    # Monitoring & Logging
+    - { role: grafana, tags: ['grafana', 'monitoring'] }
+    - { role: prometheus, tags: ['prometheus', 'monitoring'] }
+    - { role: loki, tags: ['loki', 'logging'] }
+    - { role: elasticsearch, tags: ['elasticsearch', 'logging'] }
+    - { role: opensearch, tags: ['opensearch', 'logging'] }
+    - { role: graylog, tags: ['graylog', 'logging'] }
+    - { role: logfire, tags: ['logfire', 'logging'] }
+    - { role: graphite, tags: ['graphite', 'monitoring'] }
+    
+    # Infrastructure Tools
+    - { role: terraform, tags: ['terraform', 'iac'] }
+    - { role: pulumi, tags: ['pulumi', 'iac'] }
+    - { role: consul, tags: ['consul', 'service-mesh'] }
+    - { role: kong, tags: ['kong', 'api-gateway'] }
+    
+    # Authentication & Security
+    - { role: keycloak, tags: ['keycloak', 'auth'] }
+    - { role: bitwarden, tags: ['bitwarden', 'security'] }
+    
+    # Development Environments
+    - { role: vscode, tags: ['vscode', 'ide'] }
+    - { role: cursor, tags: ['cursor', 'ide'] }
+    - { role: zed, tags: ['zed', 'ide'] }
+    - { role: windsurf, tags: ['windsurf', 'ide'] }
+    - { role: vscode-server, tags: ['vscode-server', 'remote'] }
+    - { role: gitpod, tags: ['gitpod', 'devenv'] }
+    - { role: devpod, tags: ['devpod', 'devenv'] }
+    - { role: devbox, tags: ['devbox', 'devenv'] }
+    - { role: devcontainer, tags: ['devcontainer', 'devenv'] }
+    
+    # Networking & VPN
+    - { role: tailscale, tags: ['tailscale', 'vpn'] }
+    - { role: zerotier, tags: ['zerotier', 'vpn'] }
+    - { role: wireguard, tags: ['wireguard', 'vpn'] }
+    - { role: cloudflared, tags: ['cloudflared', 'tunnel'] }
+    
+    # Collaboration & Cloud Storage
+    - { role: nextcloud, tags: ['nextcloud', 'cloud'] }
+    - { role: owncloud, tags: ['owncloud', 'cloud'] }
+    - { role: gitlab, tags: ['gitlab', 'git'] }
+    - { role: gitea, tags: ['gitea', 'git'] }
+    
+    # Agent Frameworks
+    - { role: agent-zero, tags: ['agent-zero', 'agent'] }
+    - { role: anythingllm, tags: ['anythingllm', 'agent'] }
+    - { role: jan, tags: ['jan', 'agent'] }
+    - { role: dyad, tags: ['dyad', 'agent'] }
+    - { role: lm-studio, tags: ['lm-studio', 'agent'] }
+    - { role: localrecall, tags: ['localrecall', 'agent'] }
+    - { role: localagi, tags: ['localagi', 'agent'] }
+    
+    # Search & Scraping
+    - { role: searxng, tags: ['searxng', 'search'] }
+    - { role: exa, tags: ['exa', 'search'] }
+    - { role: firecrawl, tags: ['firecrawl', 'scraping'] }
+    - { role: crawl4ai, tags: ['crawl4ai', 'scraping'] }
+    
+    # Streaming & Messaging
+    - { role: kafka, tags: ['kafka', 'streaming'] }
+    - { role: n8n, tags: ['n8n', 'automation'] }
+    
+    # Remote Access
+    - { role: guacamole, tags: ['guacamole', 'remote'] }
+    - { role: openssh, tags: ['openssh', 'remote'] }
+    - { role: cockpit, tags: ['cockpit', 'remote'] }
+    
+    # Additional Tools
+    - { role: supabase, tags: ['supabase', 'backend'] }
+    - { role: prisma, tags: ['prisma', 'orm'] }
+    - { role: pydantic, tags: ['pydantic', 'python'] }
+    - { role: nextjs, tags: ['nextjs', 'framework'] }
+    - { role: uptime-kuma, tags: ['uptime-kuma', 'monitoring'] }
+    - { role: openrouter-sdk, tags: ['openrouter', 'sdk'] }
+    - { role: gemini-cli, tags: ['gemini-cli', 'cli'] }
+    - { role: qodo, tags: ['qodo', 'dev'] }
+
+- name: Vault Infrastructure
+  hosts: vault_servers
+  become: yes
+  roles:
+    - vault
