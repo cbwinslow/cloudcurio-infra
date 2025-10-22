@@ -1,24 +1,77 @@
 ---
-# roles/grafana/tasks/main.yml
+###############################################################################
+# Grafana Installation Role - Main Tasks
+#
+# This role installs Grafana, a popular open-source analytics and monitoring
+# platform. Grafana allows you to query, visualize, alert on, and understand
+# your metrics from various data sources.
+#
+# Tasks performed:
+# 1. Add Grafana's official GPG key for package verification
+# 2. Add Grafana's official APT repository
+# 3. Install Grafana package
+# 4. Enable and start Grafana service
+#
+# Variables used (from defaults/main.yml or group_vars):
+# - grafana_admin_user: Admin username (default: admin)
+# - grafana_admin_password: Admin password (should use vault)
+# - grafana_port: Web UI port (default: 3002)
+#
+# Requirements:
+# - Ubuntu 20.04+ or Debian 10+
+# - Internet connectivity
+# - Port 3002 available (configurable)
+#
+# Post-installation:
+# - Access web UI: http://localhost:3002
+# - Default credentials: admin / admin (prompted to change on first login)
+# - Configure data sources: Prometheus, Loki, etc.
+# - Import dashboards from grafana.com
+#
+# Common data sources:
+# - Prometheus: http://localhost:9090
+# - Loki: http://localhost:3100
+# - InfluxDB: http://localhost:8086
+###############################################################################
+
+# Task 1: Add Grafana GPG key
+# This key is used to verify the authenticity and integrity of Grafana packages
+# GPG (GNU Privacy Guard) ensures packages haven't been tampered with
 - name: Add Grafana GPG key
   apt_key:
     url: https://apt.grafana.com/gpg.key
     state: present
 
+# Task 2: Add Grafana repository
+# Adds Grafana's official APT repository to system sources
+# This provides access to the latest stable releases directly from Grafana Labs
+# The "stable" channel provides well-tested, production-ready versions
 - name: Add Grafana repository
   apt_repository:
     repo: "deb https://apt.grafana.com stable main"
     state: present
     filename: grafana
 
+# Task 3: Install Grafana
+# Installs the Grafana server package which includes:
+# - Grafana server binary
+# - Web UI assets
+# - Default dashboards and plugins
+# - Systemd service file
+# update_cache: yes ensures we have the latest package list
 - name: Install Grafana
   apt:
     name: grafana
     state: present
     update_cache: yes
 
+# Task 4: Enable and start Grafana service
+# Ensures Grafana:
+# - Starts automatically on system boot (enabled)
+# - Is running now (started)
+# The service name is 'grafana-server' (not just 'grafana')
 - name: Enable and start Grafana service
   systemd:
     name: grafana-server
-    enabled: yes
-    state: started
+    enabled: yes        # Start on boot
+    state: started      # Start now if not already running

@@ -1,10 +1,73 @@
 ---
-# roles/ollama/tasks/main.yml
+###############################################################################
+# Ollama Installation Role - Main Tasks
+#
+# This role installs Ollama, a tool for running large language models (LLMs)
+# locally on your machine. Ollama makes it easy to get up and running with
+# models like Llama 2, Mistral, Code Llama, and many others.
+#
+# Tasks performed:
+# 1. Download and install Ollama using official install script
+# 2. Create systemd service for Ollama
+# 3. Enable and start Ollama service
+# 4. Pull specified AI models
+#
+# Variables used (from defaults/main.yml or group_vars):
+# - ollama_models: List of models to download (e.g., ['llama2', 'mistral'])
+# - ollama_gpu_enable: Enable GPU acceleration (default: false)
+#
+# Requirements:
+# - Ubuntu 20.04+ or Debian 10+
+# - For GPU: NVIDIA GPU with CUDA support
+# - Sufficient disk space (models can be large):
+#   * llama2: ~4GB
+#   * codellama: ~4GB
+#   * mistral: ~4GB
+#   * mixtral: ~26GB
+# - Port 11434 available
+#
+# Post-installation:
+# - Test: ollama run llama2
+# - List models: ollama list
+# - Remove model: ollama rm model-name
+# - API: http://localhost:11434
+# - Model library: https://ollama.ai/library
+#
+# Performance tips:
+# - Use GPU for better performance
+# - Allocate sufficient RAM (8GB+ recommended)
+# - SSD recommended for model storage
+###############################################################################
+
+# Task 1: Install Ollama
+# Downloads and runs the official Ollama installation script
+# This script:
+# - Detects the operating system and architecture
+# - Downloads the appropriate Ollama binary
+# - Installs it to /usr/local/bin
+# - Sets up necessary permissions
+# 
+# The 'creates' parameter makes this task idempotent:
+# - Only runs if /usr/local/bin/ollama doesn't exist
+# - Safe to run multiple times without reinstalling
 - name: Install Ollama
   shell: curl -fsSL https://ollama.ai/install.sh | sh
   args:
     creates: /usr/local/bin/ollama
 
+# Task 2: Create Ollama systemd service
+# Creates a systemd unit file to manage Ollama as a system service
+# This allows:
+# - Starting/stopping Ollama with systemctl
+# - Automatic startup on boot
+# - Service restart on failure
+# - Standard logging via journalctl
+#
+# Service configuration:
+# - Type: simple - process doesn't fork
+# - ExecStart: command to run Ollama server
+# - Restart: on-failure - restart if crashes
+# - WantedBy: multi-user.target - start in multi-user mode
 - name: Create Ollama systemd service
   copy:
     dest: /etc/systemd/system/ollama.service
@@ -22,15 +85,32 @@
       WantedBy=multi-user.target
   notify: reload systemd
 
+# Task 3: Enable and start Ollama service
+# Ensures Ollama:
+# - Starts automatically on system boot (enabled: yes)
+# - Is running now (state: started)
+# If already running, this won't restart it
 - name: Enable and start Ollama service
   systemd:
     name: ollama
     enabled: yes
     state: started
 
+# Task 4: Pull Ollama models
+# Downloads specified AI models from Ollama's registry
+# This can take significant time and bandwidth:
+# - Small models (7B): 5-10 minutes
+# - Large models (70B): 30-60 minutes
+#
+# async: 600 - allows up to 10 minutes per model
+# poll: 0 - don't wait for completion (fire and forget)
+# This prevents Ansible from blocking on long downloads
+#
+# Models are stored in: ~/.ollama/models/
+# To use: ollama run model-name
 - name: Pull Ollama models
   command: "ollama pull {{ item }}"
   loop: "{{ ollama_models }}"
   when: ollama_models is defined
-  async: 600
-  poll: 0
+  async: 600          # Maximum 10 minutes per model
+  poll: 0             # Don't wait for completion
