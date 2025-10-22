@@ -7,8 +7,14 @@
     version: main
   ignore_errors: yes
 
+- name: Check if requirements.txt exists
+  stat:
+    path: /opt/localrecall/requirements.txt
+  register: requirements_file
+
 - name: Install LocalRecall dependencies
   pip:
     requirements: /opt/localrecall/requirements.txt
     state: present
   ignore_errors: yes
+  when: requirements_file.stat.exists
