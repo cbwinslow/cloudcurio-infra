@@ -1,27 +1,64 @@
 ---
-# roles/docker/tasks/main.yml
+###############################################################################
+# Docker Installation Role - Main Tasks
+#
+# This role installs Docker CE (Community Edition) and configures it for use.
+# Docker is a platform for developing, shipping, and running applications
+# in containers.
+#
+# Tasks performed:
+# 1. Install system dependencies required for Docker
+# 2. Add Docker's official GPG key for package verification
+# 3. Add Docker's APT repository to system sources
+# 4. Install Docker Engine, CLI, and containerd
+# 5. Add specified users to the docker group (for non-root access)
+# 6. Enable and start the Docker service
+#
+# Variables used (from defaults/main.yml or group_vars):
+# - docker_users: List of users to add to docker group
+#
+# Requirements:
+# - Ubuntu 20.04+ or Debian 10+
+# - Sudo/root access
+# - Internet connectivity
+#
+# Post-installation:
+# - Users need to log out and back in for group changes to take effect
+# - Verify with: docker --version && docker ps
+###############################################################################
+
+# Task 1: Install prerequisite packages
+# These packages are required for adding and using Docker's APT repository
 - name: Install dependencies for Docker
   apt:
     name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
+      - apt-transport-https  # Allows apt to retrieve packages over HTTPS
+      - ca-certificates       # Common CA certificates for SSL verification
+      - curl                  # Command-line tool for transferring data
+      - gnupg                 # GNU Privacy Guard for key management
+      - lsb-release          # Provides Linux Standard Base version info
     state: present
     update_cache: yes
 
+# Task 2: Add Docker's official GPG key
+# This key is used to verify the authenticity of Docker packages
 - name: Add Docker GPG key
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
+# Task 3: Add Docker's official APT repository
+# This provides access to the latest stable Docker releases
 - name: Add Docker repository
   apt_repository:
     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
     filename: docker
 
+# Task 4: Install Docker Engine and related components
+# - docker-ce: Docker Community Edition engine
+# - docker-ce-cli: Command-line interface for Docker
+# - containerd.io: Container runtime
 - name: Install Docker
   apt:
     name:
@@ -31,16 +68,21 @@
     state: present
     update_cache: yes
 
+# Task 5: Add users to the docker group
+# This allows specified users to run Docker commands without sudo
+# Users must log out and back in for this to take effect
 - name: Add users to docker group
   user:
     name: "{{ item }}"
     groups: docker
-    append: yes
+    append: yes            # Add to group without removing from others
   loop: "{{ docker_users }}"
   when: docker_users is defined
 
+# Task 6: Enable and start Docker service
+# Ensures Docker daemon starts automatically on boot and is running now
 - name: Enable and start Docker service
   systemd:
     name: docker
-    enabled: yes
-    state: started
+    enabled: yes           # Start on boot
+    state: started         # Start now if not already running

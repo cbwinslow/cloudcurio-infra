@@ -1,5 +1,38 @@
 ---
-# roles/python/tasks/main.yml
+###############################################################################
+# Python Installation Role - Main Tasks
+#
+# This role installs Python 3.x with development tools and package managers.
+# Python is a high-level programming language widely used in DevOps, data
+# science, web development, and automation.
+#
+# Tasks performed:
+# 1. Install Python interpreter and development headers
+# 2. Upgrade pip to the latest version
+# 3. Install specified Python packages
+# 4. Create a symbolic link for python command
+#
+# Variables used (from defaults/main.yml or group_vars):
+# - python_version: Python version to install (e.g., "3.11")
+# - python_packages: List of Python packages to install via pip
+#
+# Requirements:
+# - Ubuntu 20.04+ or Debian 10+
+# - Internet connectivity for package downloads
+#
+# Post-installation:
+# - Verify with: python3 --version
+# - Check pip: pip3 --version
+# - List installed packages: pip3 list
+###############################################################################
+
+# Task 1: Install Python and development dependencies
+# - python{version}: Main Python interpreter
+# - python{version}-dev: Development headers needed for compiling Python packages
+# - python{version}-venv: Virtual environment support
+# - python3-pip: Package installer for Python
+# - build-essential: Compilers and build tools
+# - libssl-dev, libffi-dev: Libraries needed for cryptography packages
 - name: Install Python and dependencies
   apt:
     name:
@@ -13,12 +46,21 @@
     state: present
     update_cache: yes
 
+# Task 2: Upgrade pip to latest version
+# Ensures we have the most recent bug fixes and features
+# pip is Python's package installer
 - name: Ensure pip is up to date
   pip:
     name: pip
     state: latest
     executable: pip3
 
+# Task 3: Install additional Python packages
+# These are common tools for Python development:
+# - virtualenv/pipenv/poetry: Environment and dependency managers
+# - black/flake8: Code formatting and linting
+# - pytest: Testing framework
+# - jupyterlab: Interactive development environment
 - name: Install Python packages
   pip:
     name: "{{ python_packages }}"
@@ -26,9 +68,13 @@
     executable: pip3
   when: python_packages is defined
 
+# Task 4: Create python symlink
+# Creates a 'python' command that points to the installed Python version
+# This provides compatibility for scripts that use #!/usr/bin/env python
+# Note: Some systems don't create this by default to avoid ambiguity
 - name: Create symbolic link for python
   file:
     src: "/usr/bin/python{{ python_version }}"
     dest: /usr/bin/python
     state: link
-  ignore_errors: yes
+  ignore_errors: yes  # Don't fail if link already exists or conflicts
