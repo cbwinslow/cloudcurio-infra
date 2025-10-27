@@ -1,0 +1,33 @@
+---
+- name: Add SaltStack repository key
+  ansible.builtin.apt_key:
+    url: https://repo.saltproject.io/salt/py3/ubuntu/{{ ansible_distribution_version }}/amd64/SALT-PROJECT-GPG-PUBKEY-2023.pub
+    state: present
+
+- name: Add SaltStack repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://repo.saltproject.io/salt/py3/ubuntu/{{ ansible_distribution_version }}/amd64/latest {{ ansible_distribution_release }} main"
+    state: present
+    filename: salt
+
+- name: Install Salt minion
+  ansible.builtin.apt:
+    name: salt-minion
+    state: present
+    update_cache: yes
+  when: salt_master_ip is defined
+
+- name: Configure Salt minion
+  ansible.builtin.template:
+    src: minion.j2
+    dest: /etc/salt/minion
+    mode: '0644'
+  when: salt_master_ip is defined
+  notify: Restart salt-minion
+
+- name: Enable and start Salt minion
+  ansible.builtin.systemd:
+    name: salt-minion
+    enabled: yes
+    state: started
+  when: salt_master_ip is defined

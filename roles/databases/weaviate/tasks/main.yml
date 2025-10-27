@@ -1,0 +1,29 @@
+---
+- name: Create Weaviate directory
+  ansible.builtin.file:
+    path: /opt/weaviate/data
+    state: directory
+    mode: '0755'
+
+- name: Pull Weaviate Docker image
+  community.docker.docker_image:
+    name: semitechnologies/weaviate
+    source: pull
+    tag: latest
+
+- name: Create Weaviate container
+  community.docker.docker_container:
+    name: weaviate
+    image: semitechnologies/weaviate:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8081:8080"
+    volumes:
+      - /opt/weaviate/data:/var/lib/weaviate
+    env:
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"

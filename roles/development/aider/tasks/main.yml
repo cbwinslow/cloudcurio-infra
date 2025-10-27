@@ -1,0 +1,26 @@
+---
+- name: Install Aider AI coding assistant
+  ansible.builtin.pip:
+    name: aider-chat
+    state: present
+    executable: pip3
+
+- name: Create aider configuration directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.aider"
+    state: directory
+    mode: '0755'
+
+- name: Configure aider
+  ansible.builtin.template:
+    src: aider.conf.j2
+    dest: "{{ ansible_env.HOME }}/.aider/aider.conf.yml"
+    mode: '0644'
+  when: aider_api_key is defined
+
+- name: Install aider shell completion
+  ansible.builtin.shell: |
+    aider --install-completion bash
+  args:
+    creates: "{{ ansible_env.HOME }}/.bashrc.d/aider-completion"
+  ignore_errors: yes

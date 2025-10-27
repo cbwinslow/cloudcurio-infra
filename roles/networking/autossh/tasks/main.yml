@@ -1,0 +1,26 @@
+---
+- name: Install autossh
+  ansible.builtin.apt:
+    name: autossh
+    state: present
+    update_cache: yes
+
+- name: Create autossh configuration directory
+  ansible.builtin.file:
+    path: /etc/autossh
+    state: directory
+    mode: '0755'
+
+- name: Create autossh systemd service template
+  ansible.builtin.template:
+    src: autossh.service.j2
+    dest: /etc/systemd/system/autossh@.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Create autossh tunnels configuration
+  ansible.builtin.template:
+    src: tunnels.conf.j2
+    dest: /etc/autossh/tunnels.conf
+    mode: '0600'
+  when: autossh_tunnels is defined

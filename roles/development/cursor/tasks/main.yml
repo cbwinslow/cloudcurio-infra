@@ -1,0 +1,39 @@
+---
+- name: Install Cursor AppImage dependencies
+  ansible.builtin.apt:
+    name:
+      - fuse
+      - libfuse2
+    state: present
+    update_cache: yes
+
+- name: Create Cursor installation directory
+  ansible.builtin.file:
+    path: /opt/cursor
+    state: directory
+    mode: '0755'
+
+- name: Download Cursor AppImage
+  ansible.builtin.get_url:
+    url: "https://downloader.cursor.sh/linux/appImage/x64"
+    dest: /opt/cursor/cursor.AppImage
+    mode: '0755'
+
+- name: Create Cursor desktop entry
+  ansible.builtin.copy:
+    dest: /usr/share/applications/cursor.desktop
+    content: |
+      [Desktop Entry]
+      Name=Cursor
+      Exec=/opt/cursor/cursor.AppImage
+      Terminal=false
+      Type=Application
+      Icon=cursor
+      Categories=Development;IDE;
+    mode: '0644'
+
+- name: Create symbolic link for cursor command
+  ansible.builtin.file:
+    src: /opt/cursor/cursor.AppImage
+    dest: /usr/local/bin/cursor
+    state: link

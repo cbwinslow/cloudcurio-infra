@@ -1,0 +1,45 @@
+---
+- name: Add Cloudflare GPG key
+  ansible.builtin.apt_key:
+    url: https://pkg.cloudflare.com/cloudflare-main.gpg
+    keyring: /usr/share/keyrings/cloudflare-archive-keyring.gpg
+    state: present
+
+- name: Add Cloudflare repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/cloudflare-archive-keyring.gpg] https://pkg.cloudflare.com/cloudflared {{ ansible_distribution_release }} main"
+    state: present
+    filename: cloudflared
+
+- name: Install cloudflared
+  ansible.builtin.apt:
+    name: cloudflared
+    state: present
+    update_cache: yes
+
+- name: Create cloudflared configuration directory
+  ansible.builtin.file:
+    path: /etc/cloudflared
+    state: directory
+    mode: '0755'
+
+- name: Configure cloudflared tunnel
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: /etc/cloudflared/config.yml
+    mode: '0600'
+  when: cloudflare_tunnel_token is defined
+  notify: Restart cloudflared
+
+- name: Install cloudflared as a service
+  ansible.builtin.command: cloudflared service install
+  args:
+    creates: /etc/systemd/system/cloudflared.service
+  when: cloudflare_tunnel_token is defined
+
+- name: Enable cloudflared service
+  ansible.builtin.systemd:
+    name: cloudflared
+    enabled: yes
+    state: started
+  when: cloudflare_tunnel_token is defined

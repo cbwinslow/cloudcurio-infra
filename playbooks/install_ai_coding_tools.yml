@@ -1,0 +1,111 @@
+---
+# Playbook to install AI coding terminal tools
+- name: Install AI Coding Terminal Tools
+  hosts: zerotier_nodes
+  become: yes
+  gather_facts: yes
+
+  vars:
+    install_lobechat: true
+    install_continue: true
+    install_qwen_code: false  # Set to true if you have GPU
+    vscode_installed: false   # Set to true if VS Code is installed
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install prerequisite packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - nodejs
+          - npm
+          - git
+          - curl
+          - wget
+        state: present
+      when: ansible_os_family == "Debian"
+
+  roles:
+    - development/ai-coding-tools
+    - development/aider
+    - development/cline
+    - development/cursor
+
+- name: Install Additional AI Tools
+  hosts: zerotier_nodes
+  become: yes
+  tasks:
+    - name: Install code-server (VS Code in browser)
+      community.docker.docker_container:
+        name: code-server
+        image: codercom/code-server:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "8080:8080"
+        volumes:
+          - "{{ ansible_env.HOME }}/projects:/home/coder/projects"
+        env:
+          PASSWORD: "{{ code_server_password | default('changeme') }}"
+
+    - name: Install Windsurf AI IDE
+      ansible.builtin.shell: |
+        curl -fsSL https://windsurf.ai/install.sh | bash
+      args:
+        creates: /usr/local/bin/windsurf
+      ignore_errors: yes
+
+    - name: Install TabNine AI code completion
+      ansible.builtin.pip:
+        name: tabnine
+        state: present
+        executable: pip3
+      ignore_errors: yes
+
+    - name: Install CodeGPT
+      ansible.builtin.npm:
+        name: codegpt
+        global: yes
+        state: present
+      ignore_errors: yes
+
+    - name: Clone Dyad AI pair programming tool
+      ansible.builtin.git:
+        repo: https://github.com/dyad-ai/dyad.git
+        dest: /opt/dyad
+        version: main
+      ignore_errors: yes
+
+    - name: Install OpenCode AI
+      ansible.builtin.pip:
+        name: opencode-ai
+        state: present
+        executable: pip3
+      ignore_errors: yes
+
+    - name: Display installation summary
+      ansible.builtin.debug:
+        msg: |
+          AI Coding Tools Installation Complete!
+          
+          Installed Tools:
+          - Aider: AI pair programming (command: aider)
+          - Cline: AI coding assistant (command: cline)
+          - Cursor: AI-powered IDE (command: cursor)
+          - GitHub Copilot CLI: GitHub AI assistant
+          - LobeChat: AI conversations (http://localhost:3210)
+          - Code-server: VS Code in browser (http://localhost:8080)
+          - Continue: Open-source Copilot
+          - OpenAI, Claude, Gemini APIs available
+          
+          Quick Start:
+          1. Set API keys: export OPENAI_API_KEY=your_key
+          2. Run: ai-code
+          3. Or use specific tools: aider, cline, cursor
+          
+          Documentation: ~/.ai-tools/README.md

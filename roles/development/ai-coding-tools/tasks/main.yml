@@ -1,0 +1,129 @@
+---
+# Comprehensive AI Coding Terminal Tools Installation Role
+
+- name: Install Python AI coding tools
+  ansible.builtin.pip:
+    name:
+      - aider-chat          # Aider AI pair programming
+      - openai              # OpenAI API
+      - anthropic           # Claude API
+      - google-generativeai # Gemini API
+    state: present
+    executable: pip3
+
+- name: Install Node.js-based AI tools
+  ansible.builtin.npm:
+    name: "{{ item }}"
+    global: yes
+    state: present
+  loop:
+    - "@cline/cli"
+    - "copilot-cli"
+    - "continue"
+
+- name: Create AI tools configuration directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ai-tools"
+    state: directory
+    mode: '0755'
+
+- name: Install GitHub Copilot CLI
+  ansible.builtin.shell: |
+    npm install -g @githubnext/github-copilot-cli
+  args:
+    creates: /usr/local/bin/github-copilot-cli
+  ignore_errors: yes
+
+- name: Clone and setup Continue.dev
+  ansible.builtin.git:
+    repo: https://github.com/continuedev/continue.git
+    dest: /opt/continue
+    version: main
+  when: install_continue | default(false)
+
+- name: Install LobeChat for AI conversations
+  community.docker.docker_container:
+    name: lobechat
+    image: lobehub/lobe-chat:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "3210:3210"
+    env:
+      OPENAI_API_KEY: "{{ openai_api_key | default('') }}"
+      ANTHROPIC_API_KEY: "{{ anthropic_api_key | default('') }}"
+  when: install_lobechat | default(false)
+
+- name: Install Roo-Cline (VS Code extension via CLI)
+  ansible.builtin.shell: |
+    code --install-extension roo-cline.roo-cline
+  ignore_errors: yes
+  when: vscode_installed | default(false)
+
+- name: Create wrapper scripts for AI tools
+  ansible.builtin.copy:
+    dest: "/usr/local/bin/{{ item.name }}"
+    content: "{{ item.content }}"
+    mode: '0755'
+  loop:
+    - name: ai-code
+      content: |
+        #!/bin/bash
+        # Universal AI coding assistant launcher
+        echo "Available AI coding tools:"
+        echo "1) Aider"
+        echo "2) Cline"
+        echo "3) GitHub Copilot CLI"
+        echo "4) Continue"
+        read -p "Select tool [1-4]: " choice
+        case $choice in
+          1) aider "$@" ;;
+          2) cline "$@" ;;
+          3) github-copilot-cli "$@" ;;
+          4) continue "$@" ;;
+          *) echo "Invalid choice" ;;
+        esac
+
+- name: Install OpenCoder (if available)
+  ansible.builtin.pip:
+    name: opencoder
+    state: present
+    executable: pip3
+  ignore_errors: yes
+
+- name: Install Qwen-Code dependencies
+  ansible.builtin.pip:
+    name:
+      - transformers
+      - torch
+      - accelerate
+    state: present
+    executable: pip3
+  when: install_qwen_code | default(false)
+
+- name: Create AI tools documentation
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.ai-tools/README.md"
+    content: |
+      # AI Coding Tools Installed
+
+      ## Available Tools:
+      - **Aider**: AI pair programming in terminal (`aider`)
+      - **Cline**: AI coding assistant (`cline`)
+      - **GitHub Copilot CLI**: GitHub's AI assistant (`github-copilot-cli`)
+      - **Continue**: Open-source Copilot alternative
+      - **LobeChat**: AI conversation interface (http://localhost:3210)
+      - **OpenAI API**: Direct API access
+      - **Claude API**: Anthropic's Claude access
+      - **Gemini API**: Google's Gemini access
+
+      ## Usage:
+      Run `ai-code` to select and launch a tool interactively.
+
+      ## Configuration:
+      Set API keys in environment variables:
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - GOOGLE_API_KEY
+      - GITHUB_TOKEN
+    mode: '0644'

@@ -1,0 +1,59 @@
+---
+- name: Install Apache
+  ansible.builtin.apt:
+    name: apache2
+    state: present
+    update_cache: yes
+
+- name: Enable Apache modules
+  ansible.builtin.apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ssl
+    - rewrite
+    - proxy
+    - proxy_http
+    - proxy_wstunnel
+    - headers
+  notify: Restart apache
+
+- name: Create Apache sites directory
+  ansible.builtin.file:
+    path: /var/www
+    state: directory
+    mode: '0755'
+
+- name: Configure Apache virtual hosts
+  ansible.builtin.template:
+    src: vhost.conf.j2
+    dest: "/etc/apache2/sites-available/{{ item.name }}.conf"
+    mode: '0644'
+  loop: "{{ apache_vhosts | default([]) }}"
+  notify: Reload apache
+
+- name: Enable Apache sites
+  ansible.builtin.command: a2ensite {{ item.name }}
+  loop: "{{ apache_vhosts | default([]) }}"
+  register: enable_result
+  changed_when: "'Enabling site' in enable_result.stdout"
+  notify: Reload apache
+
+- name: Disable default site
+  ansible.builtin.command: a2dissite 000-default
+  register: disable_result
+  changed_when: "'Site 000-default disabled' in disable_result.stdout"
+  notify: Reload apache
+  when: apache_disable_default | default(true)
+
+- name: Enable and start Apache service
+  ansible.builtin.systemd:
+    name: apache2
+    enabled: yes
+    state: started
+
+- name: Configure firewall for Apache
+  ansible.builtin.ufw:
+    rule: allow
+    name: "Apache Full"
+  when: configure_firewall | default(true)

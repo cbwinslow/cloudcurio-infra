@@ -1,0 +1,93 @@
+---
+- name: Test Network Connectivity
+  hosts: zerotier_nodes
+  gather_facts: yes
+  become: no
+
+  tasks:
+    - name: Ping all ZeroTier nodes
+      ansible.builtin.ping:
+      register: ping_result
+
+    - name: Display ping results
+      ansible.builtin.debug:
+        msg: "Successfully pinged {{ inventory_hostname }} at {{ ansible_host }}"
+      when: ping_result is succeeded
+
+    - name: Test SSH connectivity
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 10
+      delegate_to: localhost
+      register: ssh_result
+
+    - name: Display SSH connectivity results
+      ansible.builtin.debug:
+        msg: "SSH port is open on {{ inventory_hostname }} ({{ ansible_host }})"
+      when: ssh_result is succeeded
+
+    - name: Gather network facts
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+      register: network_facts
+
+    - name: Display network interfaces
+      ansible.builtin.debug:
+        var: ansible_interfaces
+
+    - name: Test DNS resolution
+      ansible.builtin.command: nslookup google.com
+      register: dns_result
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display DNS results
+      ansible.builtin.debug:
+        msg: "DNS resolution working on {{ inventory_hostname }}"
+      when: dns_result.rc == 0
+
+    - name: Test internet connectivity
+      ansible.builtin.uri:
+        url: https://www.google.com
+        method: GET
+        timeout: 10
+      register: internet_result
+      ignore_errors: yes
+
+    - name: Display internet connectivity results
+      ansible.builtin.debug:
+        msg: "Internet connectivity working on {{ inventory_hostname }}"
+      when: internet_result.status == 200
+
+- name: Cross-node connectivity tests
+  hosts: zerotier_nodes
+  gather_facts: no
+  become: no
+
+  tasks:
+    - name: Ping other ZeroTier nodes
+      ansible.builtin.command: ping -c 3 {{ hostvars[item]['ansible_host'] }}
+      loop: "{{ groups['zerotier_nodes'] }}"
+      when: item != inventory_hostname
+      register: cross_ping_result
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display cross-node ping results
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} can reach {{ item.item }}"
+      loop: "{{ cross_ping_result.results }}"
+      when: 
+        - item.rc is defined
+        - item.rc == 0
+
+- name: Network connectivity summary
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Display summary
+      ansible.builtin.debug:
+        msg: "Network connectivity test completed for all ZeroTier nodes"

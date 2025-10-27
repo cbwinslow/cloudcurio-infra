@@ -1,3 +1,11 @@
 hostname_map:
   cbwhpz: "192.168.4.10"
   cbwhpsrv1: "192.168.4.3"
+
+# ZeroTier network IP mappings
+zerotier_hostname_map:
+  cbwdellr720: "172.28.82.205"
+  cbwhpz: "172.28.27.157"
+  cbwamd: "172.28.176.115"
+  cbwlapkali: "172.28.196.74"
+  cbwmac: "172.28.169.48"

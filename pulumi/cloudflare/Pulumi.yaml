@@ -1,0 +1,16 @@
+name: cloudcurio-cloudflare
+runtime: python
+description: Cloudflare infrastructure for cloudcurio.cc with Workers, Pages, WAF, Tunnels, and Access
+
+config:
+  cloudflare:apiToken:
+    description: Cloudflare API Token
+    secret: true
+  cloudflare_account_id:
+    description: Cloudflare Account ID
+  zone_name:
+    description: Domain name for the zone
+    default: cloudcurio.cc
+  tunnel_secret:
+    description: Secret for Cloudflare Tunnel
+    secret: true

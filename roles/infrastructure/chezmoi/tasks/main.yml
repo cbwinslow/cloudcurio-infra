@@ -1,0 +1,20 @@
+---
+- name: Install chezmoi
+  ansible.builtin.shell: |
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/chezmoi
+
+- name: Initialize chezmoi
+  ansible.builtin.command: chezmoi init
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/share/chezmoi"
+  become: no
+  when: chezmoi_repo is not defined
+
+- name: Initialize chezmoi with repository
+  ansible.builtin.command: "chezmoi init {{ chezmoi_repo }}"
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/share/chezmoi"
+  become: no
+  when: chezmoi_repo is defined

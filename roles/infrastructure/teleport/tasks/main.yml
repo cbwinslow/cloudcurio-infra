@@ -1,0 +1,32 @@
+---
+- name: Download Teleport installer
+  ansible.builtin.get_url:
+    url: "https://get.gravitational.com/teleport_{{ teleport_version | default('13.0.0') }}_amd64.deb"
+    dest: /tmp/teleport.deb
+    mode: '0644'
+
+- name: Install Teleport
+  ansible.builtin.apt:
+    deb: /tmp/teleport.deb
+    state: present
+
+- name: Create Teleport configuration directory
+  ansible.builtin.file:
+    path: /etc/teleport
+    state: directory
+    mode: '0755'
+
+- name: Configure Teleport
+  ansible.builtin.template:
+    src: teleport.yaml.j2
+    dest: /etc/teleport/teleport.yaml
+    mode: '0644'
+  when: teleport_auth_server is defined
+  notify: Restart teleport
+
+- name: Enable and start Teleport service
+  ansible.builtin.systemd:
+    name: teleport
+    enabled: yes
+    state: started
+  when: teleport_auth_server is defined

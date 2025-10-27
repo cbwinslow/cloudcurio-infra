@@ -1,0 +1,124 @@
+---
+# Master playbook for complete infrastructure setup
+# This playbook installs and configures all services on ZeroTier nodes
+
+- name: Network Connectivity Test
+  hosts: zerotier_nodes
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: Test basic connectivity
+      ansible.builtin.ping:
+
+- name: Install Networking Tools
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - networking/zerotier
+    - networking/autossh
+    - networking/ssh-bastion
+    - networking/cloudflare-tunnels
+
+- name: Install Container Runtime
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - container/docker
+    - container/docker-compose
+
+- name: Install Monitoring Stack
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - monitoring/prometheus
+    - monitoring/grafana
+    - monitoring/loki
+
+- name: Install Security Tools
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - security/wazuh
+    - security/suricata
+
+- name: Install Automation Tools
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - automation/salt-stack
+
+- name: Install AI/ML Stack
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - ai-ml/anythingllm
+    - ai-ml/localai
+
+- name: Install Vector Databases
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - databases/qdrant
+    - databases/weaviate
+
+- name: Install Infrastructure Tools
+  hosts: zerotier_nodes
+  become: yes
+  roles:
+    - infrastructure/teleport
+    - infrastructure/chezmoi
+
+- name: Configure System Services
+  hosts: zerotier_nodes
+  become: yes
+  tasks:
+    - name: Copy systemd service templates
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /etc/systemd/system/
+        mode: '0644'
+      loop:
+        - templates/systemd/prometheus.service
+        - templates/systemd/loki.service
+        - templates/systemd/autossh@.service
+        - templates/systemd/docker-compose@.service
+      notify: Reload systemd
+
+    - name: Install cron jobs
+      ansible.builtin.cron:
+        name: "System maintenance jobs"
+        special_time: daily
+        job: "/usr/local/bin/system-maintenance.sh"
+        user: root
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+- name: Final System Configuration
+  hosts: zerotier_nodes
+  become: yes
+  tasks:
+    - name: Update /etc/hosts with all ZeroTier nodes
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        block: |
+          {% for host in groups['zerotier_nodes'] %}
+          {{ hostvars[host]['ansible_host'] }}    {{ host }}
+          {% endfor %}
+        marker: "# {mark} ANSIBLE MANAGED ZEROTIER HOSTS"
+
+    - name: Verify all ZeroTier IPs are reachable
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item]['ansible_host'] }}"
+        port: 22
+        timeout: 5
+      loop: "{{ groups['zerotier_nodes'] }}"
+      when: item != inventory_hostname
+      ignore_errors: yes
+      delegate_to: localhost
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "Infrastructure setup complete for {{ inventory_hostname }}!"

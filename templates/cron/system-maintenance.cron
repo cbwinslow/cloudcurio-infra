@@ -1,0 +1,29 @@
+# Common system maintenance cron jobs
+# Edit with: crontab -e
+
+# Update package lists daily at 2 AM
+0 2 * * * apt-get update > /dev/null 2>&1
+
+# Clean up old logs weekly on Sunday at 3 AM
+0 3 * * 0 find /var/log -name "*.log" -type f -mtime +30 -delete
+
+# Backup important directories daily at 1 AM
+0 1 * * * rsync -a /etc /var/backups/etc-$(date +\%Y\%m\%d) 2>&1 | logger -t backup
+
+# Check disk space every hour and alert if > 80%
+0 * * * * df -h | awk '$5 > 80 {print $0}' | mail -s "Disk Space Alert" root
+
+# Restart specific services weekly on Sunday at 4 AM
+0 4 * * 0 systemctl restart docker
+
+# Clean up Docker images and containers weekly
+0 5 * * 0 docker system prune -af --volumes > /dev/null 2>&1
+
+# Update SSL certificates daily (if using certbot)
+0 0 * * * certbot renew --quiet
+
+# Monitor ZeroTier connection every 5 minutes
+*/5 * * * * systemctl is-active zerotier-one || systemctl restart zerotier-one
+
+# Sync time with NTP server hourly
+0 * * * * ntpdate -s time.nist.gov > /dev/null 2>&1

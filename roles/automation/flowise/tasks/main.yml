@@ -1,0 +1,29 @@
+---
+- name: Create Flowise directory
+  ansible.builtin.file:
+    path: /opt/flowise
+    state: directory
+    mode: '0755'
+
+- name: Pull Flowise Docker image
+  community.docker.docker_image:
+    name: flowiseai/flowise
+    source: pull
+    tag: latest
+
+- name: Create Flowise container
+  community.docker.docker_container:
+    name: flowise
+    image: flowiseai/flowise:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /opt/flowise:/root/.flowise
+    env:
+      PORT: "3000"
+      FLOWISE_USERNAME: "{{ flowise_username | default('admin') }}"
+      FLOWISE_PASSWORD: "{{ flowise_password | default('changeme') }}"
+      PASSPHRASE: "{{ flowise_passphrase | default('CHANGEME') }}"
+      DATABASE_PATH: "/root/.flowise"
