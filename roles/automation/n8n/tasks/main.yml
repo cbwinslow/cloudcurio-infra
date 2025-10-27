@@ -1,0 +1,32 @@
+---
+- name: Create n8n directory
+  ansible.builtin.file:
+    path: /opt/n8n
+    state: directory
+    mode: '0755'
+
+- name: Pull n8n Docker image
+  community.docker.docker_image:
+    name: n8nio/n8n
+    source: pull
+    tag: latest
+
+- name: Create n8n container
+  community.docker.docker_container:
+    name: n8n
+    image: n8nio/n8n:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "5678:5678"
+    volumes:
+      - /opt/n8n:/home/node/.n8n
+    env:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: "{{ n8n_username | default('admin') }}"
+      N8N_BASIC_AUTH_PASSWORD: "{{ n8n_password | default('changeme') }}"
+      N8N_HOST: "{{ n8n_host | default('localhost') }}"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "{{ n8n_protocol | default('http') }}"
+      WEBHOOK_URL: "{{ n8n_webhook_url | default('http://localhost:5678/') }}"
+      GENERIC_TIMEZONE: "{{ timezone | default('America/New_York') }}"

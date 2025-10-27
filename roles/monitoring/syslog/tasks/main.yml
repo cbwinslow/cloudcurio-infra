@@ -1,0 +1,52 @@
+---
+- name: Install rsyslog
+  ansible.builtin.apt:
+    name: rsyslog
+    state: present
+    update_cache: yes
+
+- name: Create rsyslog configuration directory
+  ansible.builtin.file:
+    path: /etc/rsyslog.d
+    state: directory
+    mode: '0755'
+
+- name: Configure centralized syslog server
+  ansible.builtin.template:
+    src: 50-default.conf.j2
+    dest: /etc/rsyslog.d/50-default.conf
+    mode: '0644'
+  when: syslog_server_mode | default(false)
+  notify: Restart rsyslog
+
+- name: Configure remote syslog forwarding
+  ansible.builtin.template:
+    src: remote-forward.conf.j2
+    dest: /etc/rsyslog.d/remote-forward.conf
+    mode: '0644'
+  when: 
+    - syslog_remote_server is defined
+    - not (syslog_server_mode | default(false))
+  notify: Restart rsyslog
+
+- name: Enable rsyslog service
+  ansible.builtin.systemd:
+    name: rsyslog
+    enabled: yes
+    state: started
+
+- name: Create syslog directory for remote logs
+  ansible.builtin.file:
+    path: /var/log/remote
+    state: directory
+    owner: syslog
+    group: adm
+    mode: '0755'
+  when: syslog_server_mode | default(false)
+
+- name: Configure log rotation for remote logs
+  ansible.builtin.template:
+    src: remote-logs.logrotate.j2
+    dest: /etc/logrotate.d/remote-logs
+    mode: '0644'
+  when: syslog_server_mode | default(false)

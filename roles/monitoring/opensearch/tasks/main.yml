@@ -1,0 +1,69 @@
+---
+- name: Install required packages for OpenSearch
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Add OpenSearch GPG key
+  ansible.builtin.apt_key:
+    url: https://artifacts.opensearch.org/publickeys/opensearch.pgp
+    state: present
+    keyring: /usr/share/keyrings/opensearch-keyring.gpg
+
+- name: Add OpenSearch repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/opensearch-keyring.gpg] https://artifacts.opensearch.org/releases/bundle/opensearch/2.x/apt stable main"
+    state: present
+    filename: opensearch
+
+- name: Set vm.max_map_count for OpenSearch
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+- name: Install OpenSearch
+  ansible.builtin.apt:
+    name: opensearch
+    state: present
+    update_cache: yes
+
+- name: Configure OpenSearch
+  ansible.builtin.template:
+    src: opensearch.yml.j2
+    dest: /etc/opensearch/opensearch.yml
+    owner: opensearch
+    group: opensearch
+    mode: '0640'
+  notify: Restart opensearch
+
+- name: Enable and start OpenSearch service
+  ansible.builtin.systemd:
+    name: opensearch
+    enabled: yes
+    state: started
+
+- name: Wait for OpenSearch to start
+  ansible.builtin.wait_for:
+    port: 9200
+    delay: 10
+    timeout: 60
+
+- name: Install OpenSearch Dashboards
+  ansible.builtin.apt:
+    name: opensearch-dashboards
+    state: present
+  when: install_opensearch_dashboards | default(true)
+
+- name: Enable and start OpenSearch Dashboards
+  ansible.builtin.systemd:
+    name: opensearch-dashboards
+    enabled: yes
+    state: started
+  when: install_opensearch_dashboards | default(true)

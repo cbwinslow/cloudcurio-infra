@@ -21,32 +21,46 @@ This repository provides a complete automation solution for setting up and manag
 - Ansible 2.9 or higher
 - SSH access to target hosts
 - Python 3.6 or higher
+- Ubuntu/Debian-based Linux systems
 
-### Basic Usage
+### Fast Setup
 
-1. Clone this repository:
+**Option 1: Automated Ansible Deployment (Recommended)**
 ```bash
 git clone https://github.com/cbwinslow/cloudcurio-infra.git
 cd cloudcurio-infra
+
+# Test connectivity to ZeroTier nodes
+ansible-playbook -i inventory/hosts.ini playbooks/test_network_connectivity.yml
+
+# Deploy full infrastructure
+ansible-playbook -i inventory/hosts.ini playbooks/master_infrastructure_setup.yml
 ```
 
-2. Configure your inventory:
+**Option 2: Manual Installation with Scripts**
 ```bash
-cp inventory/hosts.example inventory/hosts
-# Edit inventory/hosts with your target hosts
+cd cloudcurio-infra
+
+# Run interactive installer
+bash scripts/master_installer.sh
+
+# Or install specific components
+bash scripts/installers/container/install_docker.sh
+bash scripts/installers/monitoring/install_monitoring_stack.sh
+bash scripts/installers/ai-ml/install_ai_stack.sh
 ```
 
-3. Run a playbook:
-```bash
-ansible-playbook -i inventory/hosts site.yml
-```
+See [QUICKSTART.md](QUICKSTART.md) for detailed instructions.
 
 ## Documentation
 
+- **[Quick Start Guide](QUICKSTART.md)** - Get up and running quickly
+- **[Infrastructure Guide](INFRASTRUCTURE_GUIDE.md)** - Comprehensive infrastructure documentation
 - **[DevOps Tools Reference](DEVOPS_TOOLS_REFERENCE.md)** - Complete list of supported tools organized by category
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
-- **[Ansible Roles](roles/)** - Browse available roles
-- **[Playbooks](playbooks/)** - Example playbooks
+- **[Ansible Roles](roles/)** - Browse available roles organized by category
+- **[Playbooks](playbooks/)** - Example playbooks including network tests and master setup
+- **[Installer Scripts](scripts/installers/)** - Standalone installation scripts for quick setup
 
 ## Repository Structure
 
@@ -54,11 +68,36 @@ ansible-playbook -i inventory/hosts site.yml
 cloudcurio-infra/
 ├── ansible/              # Ansible-specific configurations
 ├── playbooks/            # Ansible playbooks
-├── roles/                # Ansible roles for each tool
-├── inventory/            # Inventory files
-├── group_vars/           # Group variables
+│   ├── test_network_connectivity.yml  # ZeroTier network tests
+│   ├── master_infrastructure_setup.yml # Complete infrastructure deployment
+│   └── ...
+├── roles/                # Ansible roles organized by category
+│   ├── networking/       # ZeroTier, AutoSSH, SSH Bastion, Cloudflare Tunnels
+│   ├── monitoring/       # Prometheus, Grafana, Loki, Wazuh, Suricata
+│   ├── security/         # Security tools and SIEM
+│   ├── container/        # Docker, Docker Compose
+│   ├── automation/       # SaltStack, n8n, Flowise
+│   ├── ai-ml/           # AnythingLLM, LocalAI, Langfuse, Agent-Zero, MCP
+│   ├── databases/        # Qdrant, Weaviate, OpenSearch
+│   ├── infrastructure/   # Teleport, Chezmoi, systemd services
+│   ├── web/             # Apache, Nginx, Caddy
+│   └── development/      # Development tools
+├── inventory/            # Inventory files with ZeroTier IPs
+├── group_vars/           # Group variables including ZeroTier mappings
 ├── templates/            # Configuration templates
-├── scripts/              # Utility scripts
+│   ├── systemd/         # Systemd service templates
+│   └── cron/            # Cron job templates
+├── scripts/              # Utility and installer scripts
+│   ├── master_installer.sh  # Interactive installer
+│   └── installers/      # Category-specific installers
+│       ├── networking/
+│       ├── monitoring/
+│       ├── security/
+│       ├── container/
+│       ├── automation/
+│       ├── ai-ml/
+│       ├── infrastructure/
+│       └── web/
 ├── terraform/            # Terraform configurations
 ├── docker/               # Docker configurations
 ├── caddy/                # Caddy configurations
@@ -67,18 +106,21 @@ cloudcurio-infra/
 
 ## Categories of Tools
 
-Our DevOps tools are organized into the following categories:
+Our DevOps tools are organized into the following categories with dedicated Ansible roles and installer scripts:
 
-- **CI/CD & Automation**: Jenkins, GitLab CI, GitHub Actions, CircleCI, and more
+- **Networking & VPN**: ZeroTier, AutoSSH, SSH Bastion, Cloudflare Tunnels
+- **CI/CD & Automation**: Jenkins, GitLab CI, GitHub Actions, CircleCI, SaltStack, n8n, Flowise
 - **Container & Orchestration**: Docker, Kubernetes, Podman, containerd
-- **Monitoring & Observability**: Prometheus, Grafana, ELK Stack, Datadog
+- **Monitoring & Observability**: Prometheus, Grafana, Loki, ELK Stack, Datadog, Wazuh, Suricata
 - **Infrastructure as Code**: Terraform, Ansible, Packer, Vagrant
-- **Security & Compliance**: Vault, SonarQube, Trivy, OWASP tools
+- **Security & Compliance**: Vault, SonarQube, Trivy, OWASP tools, Wazuh SIEM
+- **AI & Machine Learning**: AnythingLLM, LocalAI, Langfuse, Agent-Zero, MCP Servers
+- **Vector Databases**: Qdrant, Weaviate, OpenSearch
 - **Version Control & Collaboration**: Git, GitLab, GitHub, Gitea
 - **Database & Storage**: PostgreSQL, MySQL, MongoDB, Redis
 - **Web Servers & Proxies**: Nginx, Apache, Caddy, HAProxy
 - **Cloud Platforms**: AWS, Azure, GCP, DigitalOcean tools
-- **Development Tools**: IDEs, Language runtimes, Build tools
+- **Development Tools**: IDEs, Language runtimes, Build tools, Chezmoi
 
 For a complete list, see the [DevOps Tools Reference](DEVOPS_TOOLS_REFERENCE.md).
 

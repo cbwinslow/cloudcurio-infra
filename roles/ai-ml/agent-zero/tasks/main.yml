@@ -1,0 +1,47 @@
+---
+- name: Install Python and pip
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - git
+    state: present
+    update_cache: yes
+
+- name: Create Agent Zero directory
+  ansible.builtin.file:
+    path: /opt/agent-zero
+    state: directory
+    mode: '0755'
+
+- name: Clone Agent Zero repository
+  ansible.builtin.git:
+    repo: https://github.com/frdel/agent-zero.git
+    dest: /opt/agent-zero/source
+    version: main
+    force: yes
+
+- name: Create Python virtual environment
+  ansible.builtin.command:
+    cmd: python3 -m venv /opt/agent-zero/venv
+    creates: /opt/agent-zero/venv/bin/activate
+
+- name: Install Agent Zero dependencies
+  ansible.builtin.pip:
+    requirements: /opt/agent-zero/source/requirements.txt
+    virtualenv: /opt/agent-zero/venv
+
+- name: Create Agent Zero systemd service
+  ansible.builtin.template:
+    src: agent-zero.service.j2
+    dest: /etc/systemd/system/agent-zero.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable Agent Zero service
+  ansible.builtin.systemd:
+    name: agent-zero
+    enabled: yes
+    state: started
+  when: agent_zero_api_key is defined

@@ -1,0 +1,46 @@
+---
+- name: Install Node.js for MCP servers
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: yes
+
+- name: Install npm
+  ansible.builtin.apt:
+    name: npm
+    state: present
+
+- name: Create MCP servers directory
+  ansible.builtin.file:
+    path: /opt/mcp-servers
+    state: directory
+    mode: '0755'
+
+- name: Install MCP SDK globally
+  ansible.builtin.npm:
+    name: "@modelcontextprotocol/sdk"
+    global: yes
+    state: present
+
+- name: Create MCP server configuration
+  ansible.builtin.template:
+    src: mcp-config.json.j2
+    dest: /opt/mcp-servers/config.json
+    mode: '0644'
+
+- name: Install common MCP server packages
+  ansible.builtin.npm:
+    name: "{{ item }}"
+    path: /opt/mcp-servers
+    state: present
+  loop:
+    - "@modelcontextprotocol/server-filesystem"
+    - "@modelcontextprotocol/server-git"
+    - "@modelcontextprotocol/server-github"
+
+- name: Create MCP servers systemd service
+  ansible.builtin.template:
+    src: mcp-servers.service.j2
+    dest: /etc/systemd/system/mcp-servers.service
+    mode: '0644'
+  notify: Reload systemd
