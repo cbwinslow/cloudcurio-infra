@@ -56,11 +56,17 @@ See [QUICKSTART.md](QUICKSTART.md) for detailed instructions.
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running quickly
 - **[Infrastructure Guide](INFRASTRUCTURE_GUIDE.md)** - Comprehensive infrastructure documentation
+- **[Testing Guide](TESTING_GUIDE.md)** - Complete testing and validation documentation
+- **[Network Troubleshooting](NETWORK_TROUBLESHOOTING.md)** - Network diagnostics and solutions
 - **[DevOps Tools Reference](DEVOPS_TOOLS_REFERENCE.md)** - Complete list of supported tools organized by category
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to this project
 - **[Ansible Roles](roles/)** - Browse available roles organized by category
 - **[Playbooks](playbooks/)** - Example playbooks including network tests and master setup
 - **[Installer Scripts](scripts/installers/)** - Standalone installation scripts for quick setup
+- **[Test Playbooks](tests/playbooks/)** - Ansible playbooks for testing installations
+- **[Validation Scripts](scripts/validators/)** - Scripts for validating component installations
+- **[Networking Scripts](scripts/networking/)** - Network diagnostics and troubleshooting tools
+- **[Uninstaller Scripts](scripts/uninstallers/)** - Clean removal of installed components
 
 ## Repository Structure
 
@@ -87,17 +93,35 @@ cloudcurio-infra/
 ├── templates/            # Configuration templates
 │   ├── systemd/         # Systemd service templates
 │   └── cron/            # Cron job templates
+├── tests/                # Testing infrastructure
+│   ├── playbooks/       # Ansible test playbooks
+│   ├── unit/            # Unit tests
+│   └── integration/     # Integration tests
 ├── scripts/              # Utility and installer scripts
-│   ├── master_installer.sh  # Interactive installer
-│   └── installers/      # Category-specific installers
-│       ├── networking/
-│       ├── monitoring/
-│       ├── security/
-│       ├── container/
-│       ├── automation/
-│       ├── ai-ml/
-│       ├── infrastructure/
-│       └── web/
+│   ├── master_installer.sh    # Interactive installer
+│   ├── master_uninstaller.sh  # Interactive uninstaller
+│   ├── run_tests.sh           # Comprehensive test runner
+│   ├── installers/      # Category-specific installers
+│   │   ├── networking/
+│   │   ├── monitoring/
+│   │   ├── security/
+│   │   ├── container/
+│   │   ├── automation/
+│   │   ├── ai-ml/
+│   │   ├── infrastructure/
+│   │   └── web/
+│   ├── uninstallers/    # Category-specific uninstallers
+│   │   ├── networking/
+│   │   ├── monitoring/
+│   │   ├── security/
+│   │   └── container/
+│   ├── validators/      # Component validation scripts
+│   │   └── validate_all_components.sh
+│   └── networking/      # Network diagnostic tools
+│       ├── network_diagnostics.sh
+│       ├── zerotier_connectivity_test.sh
+│       ├── ssh_tunnel_helper.sh
+│       └── firewall_helper.sh
 ├── terraform/            # Terraform configurations
 ├── docker/               # Docker configurations
 ├── caddy/                # Caddy configurations

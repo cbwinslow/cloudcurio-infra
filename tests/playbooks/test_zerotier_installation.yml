@@ -1,0 +1,65 @@
+---
+- name: Test ZeroTier Installation
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Check if ZeroTier is installed
+      ansible.builtin.command: zerotier-cli --version
+      register: zerotier_version
+      changed_when: false
+      failed_when: false
+
+    - name: Display ZeroTier version
+      ansible.builtin.debug:
+        msg: "ZeroTier version: {{ zerotier_version.stdout }}"
+      when: zerotier_version.rc == 0
+
+    - name: Assert ZeroTier is installed
+      ansible.builtin.assert:
+        that:
+          - zerotier_version.rc == 0
+        fail_msg: "ZeroTier is not installed"
+        success_msg: "ZeroTier is installed"
+
+    - name: Check ZeroTier service status
+      ansible.builtin.systemd:
+        name: zerotier-one
+      register: zerotier_service
+
+    - name: Assert ZeroTier service is running
+      ansible.builtin.assert:
+        that:
+          - zerotier_service.status.ActiveState == "active"
+        fail_msg: "ZeroTier service is not running"
+        success_msg: "ZeroTier service is running"
+
+    - name: Get ZeroTier node info
+      ansible.builtin.command: zerotier-cli info
+      register: zerotier_info
+      changed_when: false
+
+    - name: Display ZeroTier node info
+      ansible.builtin.debug:
+        msg: "{{ zerotier_info.stdout }}"
+
+    - name: Get ZeroTier network list
+      ansible.builtin.command: zerotier-cli listnetworks
+      register: zerotier_networks
+      changed_when: false
+
+    - name: Display ZeroTier networks
+      ansible.builtin.debug:
+        msg: "{{ zerotier_networks.stdout_lines }}"
+
+    - name: Check ZeroTier interfaces
+      ansible.builtin.shell: ip addr show | grep -i zt
+      register: zerotier_interfaces
+      changed_when: false
+      failed_when: false
+
+    - name: Display ZeroTier interfaces
+      ansible.builtin.debug:
+        msg: "{{ zerotier_interfaces.stdout_lines }}"
+      when: zerotier_interfaces.rc == 0

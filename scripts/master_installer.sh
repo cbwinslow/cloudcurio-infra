@@ -22,10 +22,12 @@ echo "8)  Infrastructure Tools (Chezmoi, Teleport, common utilities)"
 echo "9)  AI Coding Tools (Aider, Cline, Cursor, GitHub Copilot, etc.)"
 echo "10) Full Stack (Install everything)"
 echo "11) Custom Selection"
+echo "12) Validate Installations"
+echo "13) Uninstall Components"
 echo "0)  Exit"
 echo ""
 
-read -p "Choose an option [0-11]: " choice
+read -p "Choose an option [0-13]: " choice
 
 case $choice in
     1)
@@ -101,6 +103,14 @@ case $choice in
             esac
         done
         ;;
+    12)
+        echo "Validating installations..."
+        bash "$SCRIPT_DIR/validators/validate_all_components.sh"
+        ;;
+    13)
+        echo "Opening uninstaller..."
+        bash "$SCRIPT_DIR/master_uninstaller.sh"
+        ;;
     0)
         echo "Exiting..."
         exit 0
@@ -117,9 +127,10 @@ echo "Installation Complete!"
 echo "================================================"
 echo ""
 echo "Next steps:"
-echo "1. Configure your newly installed services"
-echo "2. Review the documentation in INFRASTRUCTURE_GUIDE.md"
-echo "3. Run Ansible playbooks for automated configuration"
+echo "1. Validate installation: bash scripts/validators/validate_all_components.sh"
+echo "2. Configure your newly installed services"
+echo "3. Review the documentation in INFRASTRUCTURE_GUIDE.md"
+echo "4. Run Ansible playbooks for automated configuration"
 echo ""
 echo "For Ansible automation, use:"
 echo "  ansible-playbook -i inventory/hosts.ini playbooks/master_infrastructure_setup.yml"

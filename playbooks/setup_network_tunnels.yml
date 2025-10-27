@@ -1,0 +1,116 @@
+---
+- name: Setup SSH Tunnels for Network Connectivity
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  vars:
+    ssh_tunnel_user: "{{ ansible_user }}"
+    
+  tasks:
+    - name: Ensure required packages are installed
+      ansible.builtin.apt:
+        name:
+          - openssh-client
+          - autossh
+          - netcat-openbsd
+        state: present
+        update_cache: yes
+      become: yes
+
+    - name: Create SSH tunnel configuration directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.ssh/tunnels"
+        state: directory
+        mode: '0700'
+
+    - name: Create systemd service for persistent SSH tunnel
+      ansible.builtin.template:
+        src: templates/systemd/ssh-tunnel.service.j2
+        dest: /etc/systemd/system/ssh-tunnel@.service
+        mode: '0644'
+      become: yes
+      when: enable_persistent_tunnels | default(false)
+
+    - name: Create AutoSSH wrapper script
+      ansible.builtin.copy:
+        dest: "{{ ansible_env.HOME }}/.ssh/tunnels/autossh-wrapper.sh"
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # AutoSSH wrapper for persistent tunnels
+          
+          REMOTE_HOST="$1"
+          LOCAL_PORT="$2"
+          REMOTE_PORT="$3"
+          
+          export AUTOSSH_GATETIME=0
+          export AUTOSSH_PORT=0
+          
+          autossh -M 0 -N -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" \
+            -L ${LOCAL_PORT}:localhost:${REMOTE_PORT} ${REMOTE_HOST}
+
+    - name: Test SSH connectivity to tunnel endpoints
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: 22
+        timeout: 10
+      loop: "{{ tunnel_endpoints | default([]) }}"
+      when: tunnel_endpoints is defined
+      failed_when: false
+      register: ssh_connectivity
+
+    - name: Display SSH connectivity results
+      ansible.builtin.debug:
+        msg: "SSH connectivity to {{ item.item }}: {{ 'OK' if item.state is defined and item.state == 'started' else 'FAILED' }}"
+      loop: "{{ ssh_connectivity.results }}"
+      when: tunnel_endpoints is defined
+
+- name: Configure Network Troubleshooting Tools
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Install network diagnostic tools
+      ansible.builtin.apt:
+        name:
+          - traceroute
+          - mtr
+          - tcpdump
+          - nmap
+          - netcat-openbsd
+          - curl
+          - wget
+          - dnsutils
+          - net-tools
+          - iproute2
+          - iperf3
+        state: present
+        update_cache: yes
+
+    - name: Create network diagnostics script directory
+      ansible.builtin.file:
+        path: /usr/local/bin/network-tools
+        state: directory
+        mode: '0755'
+
+    - name: Copy network diagnostic scripts
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "/usr/local/bin/{{ item | basename }}"
+        mode: '0755'
+      loop:
+        - scripts/networking/network_diagnostics.sh
+        - scripts/networking/zerotier_connectivity_test.sh
+        - scripts/networking/firewall_helper.sh
+
+    - name: Test network connectivity
+      ansible.builtin.command: ping -c 3 8.8.8.8
+      register: internet_test
+      changed_when: false
+      failed_when: false
+
+    - name: Display network status
+      ansible.builtin.debug:
+        msg: "Internet connectivity: {{ 'OK' if internet_test.rc == 0 else 'FAILED' }}"
