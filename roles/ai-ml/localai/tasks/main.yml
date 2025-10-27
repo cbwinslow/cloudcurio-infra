@@ -1,0 +1,26 @@
+---
+- name: Create LocalAI directory
+  ansible.builtin.file:
+    path: /opt/localai
+    state: directory
+    mode: '0755'
+
+- name: Pull LocalAI Docker image
+  community.docker.docker_image:
+    name: quay.io/go-skynet/local-ai
+    source: pull
+    tag: latest
+
+- name: Create LocalAI container
+  community.docker.docker_container:
+    name: localai
+    image: quay.io/go-skynet/local-ai:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/localai/models:/models
+    env:
+      THREADS: "{{ ansible_processor_vcpus | default(4) }}"
+      CONTEXT_SIZE: "512"

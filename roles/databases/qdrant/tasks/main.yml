@@ -1,0 +1,24 @@
+---
+- name: Create Qdrant directory
+  ansible.builtin.file:
+    path: /opt/qdrant/storage
+    state: directory
+    mode: '0755'
+
+- name: Pull Qdrant Docker image
+  community.docker.docker_image:
+    name: qdrant/qdrant
+    source: pull
+    tag: latest
+
+- name: Create Qdrant container
+  community.docker.docker_container:
+    name: qdrant
+    image: qdrant/qdrant:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - /opt/qdrant/storage:/qdrant/storage

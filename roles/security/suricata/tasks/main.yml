@@ -1,0 +1,34 @@
+---
+- name: Install Suricata
+  ansible.builtin.apt:
+    name: suricata
+    state: present
+    update_cache: yes
+
+- name: Create Suricata log directory
+  ansible.builtin.file:
+    path: /var/log/suricata
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure Suricata
+  ansible.builtin.template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart suricata
+
+- name: Update Suricata rules
+  ansible.builtin.command: suricata-update
+  register: rule_update
+  changed_when: "'Updated' in rule_update.stdout"
+
+- name: Enable and start Suricata service
+  ansible.builtin.systemd:
+    name: suricata
+    enabled: yes
+    state: started

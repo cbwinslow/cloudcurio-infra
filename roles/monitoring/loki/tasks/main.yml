@@ -1,0 +1,61 @@
+---
+- name: Create loki system user
+  ansible.builtin.user:
+    name: loki
+    system: yes
+    shell: /usr/sbin/nologin
+    createhome: no
+
+- name: Create loki directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: '0755'
+  loop:
+    - /etc/loki
+    - /var/lib/loki
+
+- name: Download loki
+  ansible.builtin.get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ loki_version | default('2.9.0') }}/loki-linux-amd64.zip"
+    dest: /tmp/loki.zip
+    mode: '0644'
+
+- name: Extract loki
+  ansible.builtin.unarchive:
+    src: /tmp/loki.zip
+    dest: /tmp
+    remote_src: yes
+
+- name: Copy loki binary
+  ansible.builtin.copy:
+    src: /tmp/loki-linux-amd64
+    dest: /usr/local/bin/loki
+    remote_src: yes
+    mode: '0755'
+    owner: loki
+    group: loki
+
+- name: Create loki configuration
+  ansible.builtin.template:
+    src: loki-config.yml.j2
+    dest: /etc/loki/loki-config.yml
+    owner: loki
+    group: loki
+    mode: '0644'
+  notify: Restart loki
+
+- name: Create loki systemd service
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start loki service
+  ansible.builtin.systemd:
+    name: loki
+    enabled: yes
+    state: started

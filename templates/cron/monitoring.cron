@@ -1,0 +1,20 @@
+# Monitoring and alerting cron jobs
+
+# Check Prometheus metrics every 5 minutes
+*/5 * * * * curl -s http://localhost:9090/-/healthy > /dev/null || systemctl restart prometheus
+
+# Check Grafana health every 10 minutes
+*/10 * * * * curl -s http://localhost:3000/api/health > /dev/null || systemctl restart grafana-server
+
+# Export Prometheus metrics daily at 6 AM
+0 6 * * * curl -s http://localhost:9090/api/v1/query?query=up > /var/backups/prometheus-metrics-$(date +\%Y\%m\%d).json
+
+# Check Loki health every 10 minutes
+*/10 * * * * curl -s http://localhost:3100/ready > /dev/null || systemctl restart loki
+
+# Rotate monitoring logs daily at 7 AM
+0 7 * * * find /var/log/prometheus -name "*.log" -type f -mtime +7 -delete
+0 7 * * * find /var/log/grafana -name "*.log" -type f -mtime +7 -delete
+
+# Check for failed systemd services every hour
+0 * * * * systemctl list-units --state=failed --no-pager | mail -s "Failed Services Alert" root

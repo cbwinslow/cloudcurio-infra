@@ -1,0 +1,20 @@
+# Backup and disaster recovery cron jobs
+
+# Full system backup weekly on Sunday at 1 AM
+0 1 * * 0 tar -czf /var/backups/full-backup-$(date +\%Y\%m\%d).tar.gz /etc /home /opt 2>&1 | logger -t backup
+
+# Backup Docker volumes daily at 2 AM
+0 2 * * * for vol in $(docker volume ls -q); do docker run --rm -v $vol:/volume -v /var/backups/docker:/backup alpine tar -czf /backup/$vol-$(date +\%Y\%m\%d).tar.gz /volume; done
+
+# Backup databases daily at 3 AM
+0 3 * * * docker exec postgres pg_dumpall -U postgres > /var/backups/postgres-$(date +\%Y\%m\%d).sql 2>&1 | logger -t backup
+
+# Rotate old backups - keep last 7 days
+0 4 * * * find /var/backups -name "*.tar.gz" -type f -mtime +7 -delete
+0 4 * * * find /var/backups -name "*.sql" -type f -mtime +7 -delete
+
+# Sync backups to remote location daily at 5 AM
+# 0 5 * * * rsync -avz /var/backups/ user@remote:/backups/ 2>&1 | logger -t backup-sync
+
+# Verify backup integrity weekly
+0 6 * * 0 tar -tzf /var/backups/full-backup-$(date +\%Y\%m\%d).tar.gz > /dev/null 2>&1 && echo "Backup OK" || echo "Backup FAILED" | mail -s "Backup Verification" root
