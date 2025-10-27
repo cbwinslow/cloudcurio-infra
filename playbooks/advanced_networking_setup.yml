@@ -26,6 +26,7 @@
     - name: Configure ProxyChains for SOCKS proxy
       ansible.builtin.copy:
         dest: /etc/proxychains.conf
+        mode: '0644'
         content: |
           # ProxyChains configuration
           strict_chain
@@ -37,7 +38,6 @@
           [ProxyList]
           # Add your SOCKS proxies here
           # socks5 127.0.0.1 9050
-      mode: '0644'
       when: enable_proxy_support
 
     - name: Setup TinyProxy for HTTP proxy
