@@ -104,12 +104,20 @@
       ansible.builtin.blockinfile:
         path: /etc/hosts
         block: |
-          {{ zerotier_hostname_map['cbwdellr720'] }}    cbwdellr720
-          {{ zerotier_hostname_map['cbwhpz'] }}         cbwhpz
-          {{ zerotier_hostname_map['cbwamd'] }}         cbwamd
-          {{ zerotier_hostname_map['cbwlapkali'] }}     cbwlapkali
-          {{ zerotier_hostname_map['cbwmac'] }}         cbwmac
+          {% for host in groups['zerotier_nodes'] %}
+          {{ hostvars[host]['ansible_host'] }}    {{ host }}
+          {% endfor %}
         marker: "# {mark} ANSIBLE MANAGED ZEROTIER HOSTS"
+
+    - name: Verify all ZeroTier IPs are reachable
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item]['ansible_host'] }}"
+        port: 22
+        timeout: 5
+      loop: "{{ groups['zerotier_nodes'] }}"
+      when: item != inventory_hostname
+      ignore_errors: yes
+      delegate_to: localhost
 
     - name: Display completion message
       ansible.builtin.debug:

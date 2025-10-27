@@ -1,0 +1,30 @@
+---
+- name: Install Node.js for Cline (if not already installed)
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: yes
+
+- name: Install npm
+  ansible.builtin.apt:
+    name: npm
+    state: present
+
+- name: Install Cline globally
+  ansible.builtin.npm:
+    name: "@cline/cli"
+    global: yes
+    state: present
+
+- name: Create Cline configuration directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.cline"
+    state: directory
+    mode: '0755'
+
+- name: Configure Cline API keys
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ ansible_env.HOME }}/.cline/config.json"
+    mode: '0600'
+  when: cline_api_key is defined

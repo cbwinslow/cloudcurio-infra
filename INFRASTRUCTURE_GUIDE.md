@@ -291,3 +291,164 @@ When adding new roles:
 ## License
 
 See repository LICENSE file for details.
+
+## Infrastructure as Code (IaC)
+
+### Pulumi Stacks
+
+Pulumi stacks for cloudcurio.cc deployment on Cloudflare and Vercel:
+
+**Cloudflare Stack** (`pulumi/cloudflare/`)
+- DNS Zone management
+- Dynamic DNS records for ZeroTier nodes (uses loops)
+- Cloudflare Tunnels for secure access
+- WAF rules and security
+- Access applications
+- Workers for API endpoints
+- Pages for static sites
+- Logpush for analytics
+
+**Vercel Stack** (`pulumi/vercel/`)
+- Project deployments
+- Environment variables
+- Domain mappings
+- KV Store
+
+Setup:
+```bash
+cd pulumi/cloudflare
+pip install -r requirements.txt
+pulumi login
+pulumi stack init cloudcurio-prod
+pulumi config set cloudflare:apiToken YOUR_TOKEN --secret
+pulumi up
+```
+
+### Terraform
+
+Terraform configuration for Cloudflare (`terraform/cloudflare/`):
+- Uses `for_each` loops for dynamic ZeroTier node management
+- Modular and scalable
+- Easy to add new nodes
+
+Setup:
+```bash
+cd terraform/cloudflare
+terraform init
+terraform plan
+terraform apply
+```
+
+**Adding New ZeroTier Nodes:**
+Simply update the `zerotier_nodes` variable in `variables.tf` and run `terraform apply`. The loops will automatically create DNS records for new nodes.
+
+See [IAC_README.md](IAC_README.md) for detailed IaC documentation.
+
+## AI Coding Terminal Tools
+
+Comprehensive AI coding assistant installation:
+
+**Installed Tools:**
+- **Aider**: AI pair programming
+- **Cline**: AI coding assistant
+- **Cursor**: AI-powered IDE
+- **GitHub Copilot CLI**: GitHub's AI assistant
+- **Continue**: Open-source Copilot alternative
+- **LobeChat**: AI conversations
+- **OpenAI, Claude, Gemini APIs**: Direct API access
+
+**Installation:**
+```bash
+# Ansible playbook
+ansible-playbook -i inventory/hosts.ini playbooks/install_ai_coding_tools.yml
+
+# Bash installer
+bash scripts/installers/development/install_ai_coding_tools.sh
+
+# Quick launcher
+ai-code
+```
+
+**Usage:**
+```bash
+# Aider
+aider myfile.py
+
+# Cline
+cline "write a function to sort an array"
+
+# Cursor IDE
+cursor .
+
+# Universal launcher
+ai-code
+```
+
+**Configuration:**
+Set API keys in environment:
+```bash
+export OPENAI_API_KEY=your_key
+export ANTHROPIC_API_KEY=your_key
+export GOOGLE_API_KEY=your_key
+export GITHUB_TOKEN=your_token
+```
+
+## Cloudflare Platform Integration
+
+The infrastructure leverages Cloudflare's platform features:
+
+- **MCP Servers**: Model Context Protocol server implementation in Workers
+- **WAF**: Custom firewall rules, geo-blocking, threat challenges
+- **Tunnels**: Secure access to Grafana, Prometheus, Loki, AnythingLLM
+- **Access**: Zero Trust authentication and authorization
+- **Workers**: Serverless functions and edge computing
+- **Pages**: Static site hosting with edge rendering
+- **Observability**: Logpush, analytics, security insights
+- **Firewall**: Layer 7 DDoS protection
+- **Logs**: Real-time log streaming
+
+## Vercel Integration
+
+Vercel deployment features:
+
+- **Projects**: Automated GitHub deployments
+- **Edge Network**: Global CDN
+- **Serverless Functions**: API routes
+- **Environment Variables**: Secure config management
+- **Preview Deployments**: Branch-based previews
+- **Analytics**: Performance monitoring
+
+## Dynamic Loop Support
+
+All infrastructure configurations use loops for scalability:
+
+**Ansible:**
+```yaml
+- name: Update /etc/hosts with all ZeroTier nodes
+  ansible.builtin.blockinfile:
+    block: |
+      {% for host in groups['zerotier_nodes'] %}
+      {{ hostvars[host]['ansible_host'] }}    {{ host }}
+      {% endfor %}
+```
+
+**Terraform:**
+```hcl
+resource "cloudflare_record" "zerotier_nodes" {
+  for_each = var.zerotier_nodes
+  name     = "${each.key}.internal"
+  value    = each.value
+}
+```
+
+**Pulumi:**
+```python
+for hostname, ip in zerotier_nodes.items():
+    record = cloudflare.Record(f"{hostname}-zerotier",
+        name=f"{hostname}.internal",
+        value=ip
+    )
+```
+
+This ensures easy scalability when adding new devices to the ZeroTier network.
+

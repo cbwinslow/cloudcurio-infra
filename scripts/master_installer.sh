@@ -19,12 +19,13 @@ echo "5)  AI/ML Stack (AnythingLLM, LocalAI, Langfuse, Qdrant)"
 echo "6)  Web Servers (Apache, Nginx, Caddy)"
 echo "7)  Automation Tools (SaltStack)"
 echo "8)  Infrastructure Tools (Chezmoi, Teleport, common utilities)"
-echo "9)  Full Stack (Install everything)"
-echo "10) Custom Selection"
+echo "9)  AI Coding Tools (Aider, Cline, Cursor, GitHub Copilot, etc.)"
+echo "10) Full Stack (Install everything)"
+echo "11) Custom Selection"
 echo "0)  Exit"
 echo ""
 
-read -p "Choose an option [0-10]: " choice
+read -p "Choose an option [0-11]: " choice
 
 case $choice in
     1)
@@ -60,6 +61,10 @@ case $choice in
         bash "$SCRIPT_DIR/installers/infrastructure/install_common_tools.sh"
         ;;
     9)
+        echo "Installing AI Coding Tools..."
+        bash "$SCRIPT_DIR/installers/development/install_ai_coding_tools.sh"
+        ;;
+    10)
         echo "Installing Full Stack..."
         echo "This will take some time..."
         
@@ -70,14 +75,15 @@ case $choice in
         bash "$SCRIPT_DIR/installers/security/install_security_stack.sh"
         bash "$SCRIPT_DIR/installers/ai-ml/install_ai_stack.sh"
         bash "$SCRIPT_DIR/installers/automation/install_saltstack.sh"
+        bash "$SCRIPT_DIR/installers/development/install_ai_coding_tools.sh"
         
         echo ""
         echo "Full stack installation complete!"
         ;;
-    10)
+    11)
         echo "Custom Selection..."
         echo "Select components to install (space-separated numbers, e.g., 1 2 3):"
-        echo "1) ZeroTier  2) Docker  3) Monitoring  4) Security  5) AI/ML  6) Web  7) Automation  8) Infrastructure"
+        echo "1) ZeroTier  2) Docker  3) Monitoring  4) Security  5) AI/ML  6) Web  7) Automation  8) Infrastructure  9) AI Coding Tools"
         read -p "Enter selections: " selections
         
         for sel in $selections; do
@@ -90,6 +96,7 @@ case $choice in
                 6) bash "$SCRIPT_DIR/installers/web/install_webservers.sh" ;;
                 7) bash "$SCRIPT_DIR/installers/automation/install_saltstack.sh" ;;
                 8) bash "$SCRIPT_DIR/installers/infrastructure/install_common_tools.sh" ;;
+                9) bash "$SCRIPT_DIR/installers/development/install_ai_coding_tools.sh" ;;
                 *) echo "Invalid selection: $sel" ;;
             esac
         done

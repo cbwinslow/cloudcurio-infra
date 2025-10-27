@@ -1,0 +1,10 @@
+name: cloudcurio-vercel
+runtime: python
+description: Vercel infrastructure for cloudcurio.cc projects and deployments
+
+config:
+  vercel:apiToken:
+    description: Vercel API Token
+    secret: true
+  vercel_team_id:
+    description: Vercel Team ID (optional)
