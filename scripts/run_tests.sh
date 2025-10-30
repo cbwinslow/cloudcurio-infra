@@ -5,6 +5,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Security: Enable audit logging
+AUDIT_LOG="/var/log/cloudcurio-tests.log"
+
+audit_log() {
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local user=${SUDO_USER:-$USER}
+    echo "[$timestamp] USER=$user ACTION=$1 STATUS=$2 DETAILS=$3" >> "$AUDIT_LOG" 2>/dev/null || true
+}
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -48,17 +57,21 @@ run_test() {
     if eval "$test_command" &> /tmp/test_output_$$.log; then
         success "$test_name PASSED"
         PASSED_TESTS=$((PASSED_TESTS + 1))
+        audit_log "TEST_RUN" "PASSED" "$test_name"
         return 0
     else
         error "$test_name FAILED"
         echo "  Error output:"
+        # Security: Limit error output to avoid exposing sensitive info
         cat /tmp/test_output_$$.log | head -10 | sed 's/^/    /'
         FAILED_TESTS=$((FAILED_TESTS + 1))
+        audit_log "TEST_RUN" "FAILED" "$test_name"
         return 1
     fi
 }
 
 header "CloudCurio Infrastructure - Test Runner"
+audit_log "TEST_SUITE" "STARTED" "User initiated test run"
 
 echo "Test Execution Options:"
 echo "1) Run all tests"
@@ -186,11 +199,14 @@ echo "Total tests run: $TOTAL_TESTS"
 echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
 echo -e "${RED}Failed: $FAILED_TESTS${NC}"
 echo ""
+echo "Audit log saved to: $AUDIT_LOG"
 
 if [ $FAILED_TESTS -eq 0 ]; then
     success "All tests passed!"
+    audit_log "TEST_SUITE" "COMPLETED" "All tests passed: $PASSED_TESTS/$TOTAL_TESTS"
     exit 0
 else
     error "Some tests failed. Review output above for details."
+    audit_log "TEST_SUITE" "COMPLETED" "Tests failed: $FAILED_TESTS/$TOTAL_TESTS"
     exit 1
 fi

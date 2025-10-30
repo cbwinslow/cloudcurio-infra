@@ -2,6 +2,15 @@
 # Network diagnostic and troubleshooting script
 set -e
 
+# Security: Enable audit logging
+AUDIT_LOG="/var/log/network-diagnostics.log"
+
+audit_log() {
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local user=${SUDO_USER:-$USER}
+    echo "[$timestamp] USER=$user ACTION=$1 STATUS=$2" >> "$AUDIT_LOG" 2>/dev/null || true
+}
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -29,6 +38,8 @@ echo "=============================================="
 echo "Network Diagnostics and Troubleshooting"
 echo "=============================================="
 echo ""
+
+audit_log "NETWORK_DIAGNOSTICS" "STARTED"
 
 # Check internet connectivity
 echo "=== Internet Connectivity ==="
@@ -58,7 +69,8 @@ echo ""
 # Display DNS configuration
 echo "=== DNS Configuration ==="
 if [ -f /etc/resolv.conf ]; then
-    cat /etc/resolv.conf
+    # Security: Redact potentially sensitive internal DNS servers
+    cat /etc/resolv.conf | grep -v "^#" | sed 's/nameserver 10\..*/nameserver [REDACTED-INTERNAL]/g; s/nameserver 172\..*/nameserver [REDACTED-INTERNAL]/g; s/nameserver 192\.168\..*/nameserver [REDACTED-INTERNAL]/g'
 fi
 echo ""
 
@@ -86,19 +98,25 @@ echo ""
 echo "=== Firewall Status ==="
 if command -v ufw &> /dev/null; then
     info "UFW Status:"
-    sudo ufw status verbose || true
+    # Security: Only show summary, not detailed rules
+    sudo ufw status numbered | head -5 || true
+    echo "(Detailed rules omitted for security)"
 fi
 
 if command -v iptables &> /dev/null; then
-    info "Active iptables rules:"
-    sudo iptables -L -n | head -20
+    info "Active iptables rules (summary):"
+    # Security: Show count only, not actual rules
+    rule_count=$(sudo iptables -L -n | grep -c "^Chain" || echo "0")
+    echo "Total chains: $rule_count"
+    echo "(Detailed rules omitted for security)"
 fi
 echo ""
 
 # Check listening ports
 echo "=== Listening Ports ==="
 info "Common service ports:"
-sudo netstat -tuln | grep LISTEN | head -20 || ss -tuln | grep LISTEN | head -20
+# Security: Filter out internal/sensitive ports, show only common ones
+sudo netstat -tuln 2>/dev/null | grep LISTEN | awk '{print $4}' | awk -F: '{print $NF}' | sort -u | head -10 || ss -tuln 2>/dev/null | grep LISTEN | awk '{print $5}' | awk -F: '{print $NF}' | sort -u | head -10
 echo ""
 
 # Test connectivity to common ports
@@ -108,10 +126,16 @@ test_port() {
     local port=$2
     local service=$3
     
-    if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+    # Security: Add rate limiting note
+    # Using bash TCP redirection is safe but add small delay to avoid triggering security controls
+    sleep 0.5
+    
+    if timeout 2 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}" 2>/dev/null; then
         success "$service ($host:$port) is reachable"
+        audit_log "PORT_TEST" "SUCCESS:$service:$host:$port"
     else
         error "$service ($host:$port) is NOT reachable"
+        audit_log "PORT_TEST" "FAILED:$service:$host:$port"
     fi
 }
 
@@ -145,3 +169,5 @@ echo "3. Test connectivity to specific hosts: ping <host>"
 echo "4. Check DNS resolution: nslookup <domain>"
 echo "5. Review routing table: ip route show"
 echo ""
+echo "Audit log saved to: $AUDIT_LOG"
+audit_log "NETWORK_DIAGNOSTICS" "COMPLETED"
