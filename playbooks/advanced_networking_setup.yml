@@ -1,0 +1,244 @@
+---
+- name: Configure Advanced Networking for Network Hurdles
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  vars:
+    enable_vpn_fallback: true
+    enable_proxy_support: true
+    enable_network_bonding: false
+
+  tasks:
+    - name: Install advanced networking packages
+      ansible.builtin.apt:
+        name:
+          - openvpn
+          - wireguard
+          - stunnel4
+          - proxychains
+          - tinyproxy
+          - squid
+          - haproxy
+        state: present
+        update_cache: yes
+
+    - name: Configure ProxyChains for SOCKS proxy
+      ansible.builtin.copy:
+        dest: /etc/proxychains.conf
+        mode: '0644'
+        content: |
+          # ProxyChains configuration
+          strict_chain
+          proxy_dns
+          remote_dns_subnet 224
+          tcp_read_time_out 15000
+          tcp_connect_time_out 8000
+          
+          [ProxyList]
+          # Add your SOCKS proxies here
+          # socks5 127.0.0.1 9050
+      when: enable_proxy_support
+
+    - name: Setup TinyProxy for HTTP proxy
+      ansible.builtin.copy:
+        dest: /etc/tinyproxy/tinyproxy.conf
+        content: |
+          Port 8888
+          Listen 0.0.0.0
+          Timeout 600
+          MaxClients 100
+          MinSpareServers 5
+          MaxSpareServers 20
+          StartServers 10
+          MaxRequestsPerChild 0
+          Allow 127.0.0.1
+          Allow 172.28.0.0/16
+          ViaProxyName "tinyproxy"
+          DisableViaHeader No
+        mode: '0644'
+      when: enable_proxy_support
+      notify: restart tinyproxy
+
+    - name: Create network bypass script
+      ansible.builtin.copy:
+        dest: /usr/local/bin/network-bypass
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Network bypass helper - use multiple network paths
+          
+          COMMAND="$@"
+          
+          # Try direct connection first
+          echo "Trying direct connection..."
+          timeout 5 $COMMAND && exit 0
+          
+          # Try through ZeroTier if available
+          if command -v zerotier-cli &> /dev/null; then
+              echo "Trying through ZeroTier..."
+              # Route through ZeroTier interface
+              ip route add default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
+              timeout 5 $COMMAND && exit 0
+          fi
+          
+          # Try with proxychains
+          if command -v proxychains &> /dev/null; then
+              echo "Trying with proxychains..."
+              timeout 10 proxychains $COMMAND && exit 0
+          fi
+          
+          echo "All connection attempts failed"
+          exit 1
+
+    - name: Configure IP forwarding for routing
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        reload: yes
+
+    - name: Setup NAT for ZeroTier traffic
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        out_interface: eth0
+        jump: MASQUERADE
+        comment: "NAT for ZeroTier"
+      when: ansible_default_ipv4.interface is defined
+
+    - name: Create network health monitor script
+      ansible.builtin.copy:
+        dest: /usr/local/bin/network-health-monitor
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Continuous network health monitoring with structured logging
+          
+          LOG_FILE="/var/log/network-health.log"
+          MAX_LOG_SIZE=10485760  # 10MB in bytes
+          SUMMARY_INTERVAL=300   # Log summary every 5 minutes (300 seconds)
+          SUMMARY_WINDOW=60      # During first 60 seconds of each interval
+          
+          # Function to check and rotate log if needed
+          rotate_log_if_needed() {
+              if [ -f "$LOG_FILE" ]; then
+                  # Try BSD stat first, fall back to GNU stat
+                  log_size=$(stat -f %z "$LOG_FILE" 2>/dev/null || stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)
+                  if [ "$log_size" -gt "$MAX_LOG_SIZE" ]; then
+                      mv "$LOG_FILE" "$LOG_FILE.1"
+                      [ -f "$LOG_FILE.1" ] && gzip "$LOG_FILE.1" &
+                  fi
+              fi
+          }
+          
+          # Structured logging function
+          log_event() {
+              local level=$1
+              local component=$2
+              local status=$3
+              local message=$4
+              local timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+              
+              # JSON structured log for easier parsing and security monitoring
+              echo "{\"timestamp\":\"$timestamp\",\"level\":\"$level\",\"component\":\"$component\",\"status\":\"$status\",\"message\":\"$message\"}" >> "$LOG_FILE"
+          }
+          
+          while true; do
+              rotate_log_if_needed
+              
+              # Test internet
+              if ping -c 1 -W 2 8.8.8.8 &> /dev/null; then
+                  INTERNET="OK"
+              else
+                  INTERNET="FAILED"
+                  log_event "ERROR" "connectivity" "FAILED" "Internet connectivity check failed"
+              fi
+              
+              # Test DNS
+              if nslookup google.com &> /dev/null; then
+                  DNS="OK"
+              else
+                  DNS="FAILED"
+                  log_event "ERROR" "dns" "FAILED" "DNS resolution check failed"
+              fi
+              
+              # Test ZeroTier
+              if zerotier-cli info &> /dev/null; then
+                  ZT="OK"
+              else
+                  ZT="FAILED"
+                  log_event "WARN" "zerotier" "FAILED" "ZeroTier check failed"
+              fi
+              
+              # Log periodic health check summary
+              if [ "$(($(date +%s) % SUMMARY_INTERVAL))" -lt "$SUMMARY_WINDOW" ]; then
+                  log_event "INFO" "health_check" "SUMMARY" "Internet:$INTERNET DNS:$DNS ZeroTier:$ZT"
+              fi
+              
+              # If all failed, try to restart networking
+              if [ "$INTERNET" = "FAILED" ] && [ "$DNS" = "FAILED" ]; then
+                  log_event "WARN" "recovery" "ATTEMPTING" "Network appears down, attempting recovery"
+                  systemctl restart networking
+                  systemctl restart zerotier-one
+                  log_event "INFO" "recovery" "COMPLETED" "Network services restarted"
+              fi
+              
+              sleep 60
+          done
+
+    - name: Create systemd service for network health monitor
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/network-health-monitor.service
+        content: |
+          [Unit]
+          Description=Network Health Monitor
+          After=network.target
+          
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/network-health-monitor
+          Restart=always
+          RestartSec=10
+          
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: reload systemd
+
+    - name: Enable network health monitor
+      ansible.builtin.systemd:
+        name: network-health-monitor
+        enabled: yes
+        state: started
+
+    - name: Configure logrotate for network health logs
+      ansible.builtin.copy:
+        dest: /etc/logrotate.d/network-health-monitor
+        mode: '0644'
+        content: |
+          /var/log/network-health.log {
+              daily
+              rotate 7
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 0640 root root
+              maxsize 10M
+              sharedscripts
+              postrotate
+                  # Signal the monitor to close and reopen log file if needed
+                  systemctl reload network-health-monitor.service 2>/dev/null || true
+              endscript
+          }
+
+  handlers:
+    - name: restart tinyproxy
+      ansible.builtin.systemd:
+        name: tinyproxy
+        state: restarted
+
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
