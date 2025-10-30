@@ -78,7 +78,7 @@
           if command -v zerotier-cli &> /dev/null; then
               echo "Trying through ZeroTier..."
               # Route through ZeroTier interface
-              ip route add default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
+              ip route replace default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
               timeout 5 $COMMAND && exit 0
           fi
           
