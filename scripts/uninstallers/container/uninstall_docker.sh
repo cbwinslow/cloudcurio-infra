@@ -29,7 +29,10 @@ sudo docker volume rm $(sudo docker volume ls -q) 2>/dev/null || true
 
 # Remove all networks
 echo "Removing all networks..."
-sudo docker network rm $(sudo docker network ls -q) 2>/dev/null || true
+networks=$(sudo docker network ls -q)
+if [ -n "$networks" ]; then
+    sudo docker network rm $networks 2>/dev/null || true
+fi
 
 # Stop and disable service
 echo "Stopping Docker service..."
