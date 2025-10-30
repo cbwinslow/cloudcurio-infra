@@ -47,7 +47,7 @@
           export AUTOSSH_GATETIME=0
           export AUTOSSH_PORT=0
           
-          autossh -M 0 -N -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" \
+          autossh -M 0 -N -o "ServerAliveInterval=30" -o "ServerAliveCountMax=3" \
             -L ${LOCAL_PORT}:localhost:${REMOTE_PORT} ${REMOTE_HOST}
 
     - name: Test SSH connectivity to tunnel endpoints
