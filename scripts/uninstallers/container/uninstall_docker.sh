@@ -95,8 +95,10 @@ fi
 
 # Remove all custom networks (preserve default networks)
 echo "Removing custom networks..."
-if sudo docker network ls -q --filter type=custom 2>/dev/null | grep -q .; then
-    sudo docker network ls -q --filter type=custom | xargs sudo docker network rm 2>/dev/null || true
+# Note: We remove networks by checking if they're not the default ones (bridge, host, none)
+custom_networks=$(sudo docker network ls --format '{{.Name}}' | grep -v -E '^(bridge|host|none)$' || true)
+if [ -n "$custom_networks" ]; then
+    echo "$custom_networks" | xargs -r sudo docker network rm 2>/dev/null || true
     audit_log "DOCKER_UNINSTALL" "INFO" "Removed custom networks"
 else
     echo "No custom networks to remove"

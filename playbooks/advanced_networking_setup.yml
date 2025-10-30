@@ -117,11 +117,14 @@
           
           LOG_FILE="/var/log/network-health.log"
           MAX_LOG_SIZE=10485760  # 10MB in bytes
+          SUMMARY_INTERVAL=300   # Log summary every 5 minutes (300 seconds)
+          SUMMARY_WINDOW=60      # During first 60 seconds of each interval
           
           # Function to check and rotate log if needed
           rotate_log_if_needed() {
               if [ -f "$LOG_FILE" ]; then
-                  log_size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+                  # Try BSD stat first, fall back to GNU stat
+                  log_size=$(stat -f %z "$LOG_FILE" 2>/dev/null || stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)
                   if [ "$log_size" -gt "$MAX_LOG_SIZE" ]; then
                       mv "$LOG_FILE" "$LOG_FILE.1"
                       [ -f "$LOG_FILE.1" ] && gzip "$LOG_FILE.1" &
@@ -169,7 +172,7 @@
               fi
               
               # Log periodic health check summary
-              if [ "$(($(date +%s) % 300))" -lt 60 ]; then
+              if [ "$(($(date +%s) % SUMMARY_INTERVAL))" -lt "$SUMMARY_WINDOW" ]; then
                   log_event "INFO" "health_check" "SUMMARY" "Internet:$INTERNET DNS:$DNS ZeroTier:$ZT"
               fi
               

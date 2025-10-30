@@ -69,8 +69,14 @@ echo ""
 # Display DNS configuration
 echo "=== DNS Configuration ==="
 if [ -f /etc/resolv.conf ]; then
-    # Security: Redact potentially sensitive internal DNS servers
-    cat /etc/resolv.conf | grep -v "^#" | sed 's/nameserver 10\..*/nameserver [REDACTED-INTERNAL]/g; s/nameserver 172\..*/nameserver [REDACTED-INTERNAL]/g; s/nameserver 192\.168\..*/nameserver [REDACTED-INTERNAL]/g'
+    # Security: Redact potentially sensitive internal DNS servers (RFC 1918 ranges)
+    # 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+    cat /etc/resolv.conf | grep -v "^#" | \
+        sed 's/nameserver 10\..*/nameserver [REDACTED-INTERNAL-10.x.x.x]/g; 
+             s/nameserver 172\.1[6-9]\..*/nameserver [REDACTED-INTERNAL-172.16-31.x.x]/g;
+             s/nameserver 172\.2[0-9]\..*/nameserver [REDACTED-INTERNAL-172.16-31.x.x]/g;
+             s/nameserver 172\.3[0-1]\..*/nameserver [REDACTED-INTERNAL-172.16-31.x.x]/g;
+             s/nameserver 192\.168\..*/nameserver [REDACTED-INTERNAL-192.168.x.x]/g'
 fi
 echo ""
 

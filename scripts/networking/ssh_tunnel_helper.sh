@@ -23,11 +23,18 @@ validate_port() {
 
 validate_hostname() {
     local hostname=$1
-    # Allow: alphanumeric, dots, hyphens, underscores, @
+    
+    # Check for IPv6 addresses (basic check for brackets and colons)
+    if [[ "$hostname" =~ ^\[.*\]$ ]] || [[ "$hostname" =~ : ]]; then
+        # Allow IPv6 addresses as-is (they contain colons and brackets)
+        return 0
+    fi
+    
+    # For regular hostnames: allow alphanumeric, dots, hyphens, underscores, @
     # This matches typical hostnames and user@host patterns
     if ! [[ "$hostname" =~ ^[a-zA-Z0-9._@-]+$ ]]; then
         echo "✗ Invalid hostname format: $hostname"
-        echo "  Allowed: letters, numbers, dots, hyphens, underscores, @"
+        echo "  Allowed: letters, numbers, dots, hyphens, underscores, @, or IPv6 addresses"
         return 1
     fi
     return 0
