@@ -1,0 +1,15 @@
+[Unit]
+Description=SSH Tunnel - %i
+After=network.target
+
+[Service]
+Type=simple
+User={{ ssh_tunnel_user }}
+Environment="AUTOSSH_GATETIME=0"
+Environment="AUTOSSH_PORT=0"
+ExecStart=/usr/bin/autossh -M 0 -N -o "ServerAliveInterval=30" -o "ServerAliveCountMax=3" -F %h/.ssh/tunnels/%i.conf
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

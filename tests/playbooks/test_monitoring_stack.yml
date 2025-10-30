@@ -1,0 +1,77 @@
+---
+- name: Test Monitoring Stack Installation
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Check if Prometheus is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/prometheus
+      register: prometheus_binary
+
+    - name: Check Prometheus service
+      ansible.builtin.systemd:
+        name: prometheus
+      register: prometheus_service
+      when: prometheus_binary.stat.exists
+      failed_when: false
+
+    - name: Test Prometheus endpoint
+      ansible.builtin.uri:
+        url: http://localhost:9090/-/healthy
+        method: GET
+      register: prometheus_health
+      when: prometheus_binary.stat.exists
+      failed_when: false
+
+    - name: Display Prometheus status
+      ansible.builtin.debug:
+        msg: "Prometheus is {{ 'installed and healthy' if (prometheus_binary.stat.exists and prometheus_health.status|default(0) == 200) else 'not installed or not healthy' }}"
+
+    - name: Check if Grafana is installed
+      ansible.builtin.stat:
+        path: /usr/sbin/grafana-server
+      register: grafana_binary
+
+    - name: Check Grafana service
+      ansible.builtin.systemd:
+        name: grafana-server
+      register: grafana_service
+      when: grafana_binary.stat.exists
+      failed_when: false
+
+    - name: Test Grafana endpoint
+      ansible.builtin.uri:
+        url: http://localhost:3000/api/health
+        method: GET
+      register: grafana_health
+      when: grafana_binary.stat.exists
+      failed_when: false
+
+    - name: Display Grafana status
+      ansible.builtin.debug:
+        msg: "Grafana is {{ 'installed and healthy' if (grafana_binary.stat.exists and grafana_health.status|default(0) == 200) else 'not installed or not healthy' }}"
+
+    - name: Check if Loki is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/loki
+      register: loki_binary
+
+    - name: Check Loki service
+      ansible.builtin.systemd:
+        name: loki
+      register: loki_service
+      when: loki_binary.stat.exists
+      failed_when: false
+
+    - name: Display Loki status
+      ansible.builtin.debug:
+        msg: "Loki is {{ 'installed' if loki_binary.stat.exists else 'not installed' }}"
+
+    - name: Summary of monitoring stack
+      ansible.builtin.debug:
+        msg:
+          - "Prometheus: {{ 'OK' if prometheus_binary.stat.exists else 'NOT INSTALLED' }}"
+          - "Grafana: {{ 'OK' if grafana_binary.stat.exists else 'NOT INSTALLED' }}"
+          - "Loki: {{ 'OK' if loki_binary.stat.exists else 'NOT INSTALLED' }}"

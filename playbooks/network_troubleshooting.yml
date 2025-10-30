@@ -1,0 +1,142 @@
+---
+- name: Network Troubleshooting and Recovery
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Check current network configuration
+      ansible.builtin.command: ip addr show
+      register: network_config
+      changed_when: false
+
+    - name: Display network interfaces
+      ansible.builtin.debug:
+        var: network_config.stdout_lines
+
+    - name: Test DNS resolution
+      ansible.builtin.command: nslookup google.com
+      register: dns_test
+      changed_when: false
+      failed_when: false
+
+    - name: Fix DNS if needed
+      block:
+        - name: Backup existing resolv.conf
+          ansible.builtin.copy:
+            src: /etc/resolv.conf
+            dest: /etc/resolv.conf.backup
+            remote_src: yes
+          when: dns_test.rc != 0
+
+        - name: Configure fallback DNS servers
+          ansible.builtin.copy:
+            dest: /etc/resolv.conf
+            content: |
+              nameserver 8.8.8.8
+              nameserver 8.8.4.4
+              nameserver 1.1.1.1
+          when: dns_test.rc != 0
+
+        - name: Test DNS again
+          ansible.builtin.command: nslookup google.com
+          register: dns_retest
+          changed_when: false
+          
+        - name: Display DNS fix result
+          ansible.builtin.debug:
+            msg: "DNS resolution {{ 'fixed' if dns_retest.rc == 0 else 'still failing' }}"
+      when: dns_test.rc != 0
+
+    - name: Check ZeroTier connectivity
+      block:
+        - name: Verify ZeroTier service
+          ansible.builtin.systemd:
+            name: zerotier-one
+            state: started
+            enabled: yes
+          when: ansible_facts.services['zerotier-one.service'] is defined
+
+        - name: Get ZeroTier status
+          ansible.builtin.command: zerotier-cli info
+          register: zt_status
+          changed_when: false
+          failed_when: false
+
+        - name: Display ZeroTier status
+          ansible.builtin.debug:
+            var: zt_status.stdout
+          when: zt_status.rc == 0
+
+        - name: List ZeroTier networks
+          ansible.builtin.command: zerotier-cli listnetworks
+          register: zt_networks
+          changed_when: false
+          failed_when: false
+
+        - name: Display ZeroTier networks
+          ansible.builtin.debug:
+            var: zt_networks.stdout_lines
+          when: zt_networks.rc == 0
+      when: "'zerotier-one.service' in ansible_facts.services"
+
+    - name: Check firewall rules
+      block:
+        - name: Get UFW status
+          ansible.builtin.command: ufw status verbose
+          register: ufw_status
+          changed_when: false
+          failed_when: false
+
+        - name: Display firewall status
+          ansible.builtin.debug:
+            var: ufw_status.stdout_lines
+          when: ufw_status.rc == 0
+
+        - name: Ensure essential ports are open
+          ansible.builtin.ufw:
+            rule: allow
+            port: "{{ item.port }}"
+            proto: "{{ item.proto }}"
+            comment: "{{ item.comment }}"
+          loop:
+            - { port: '22', proto: 'tcp', comment: 'SSH' }
+            - { port: '9993', proto: 'udp', comment: 'ZeroTier' }
+          when: "'ufw' in ansible_facts.packages"
+
+    - name: Test connectivity to key services
+      ansible.builtin.uri:
+        url: "{{ item }}"
+        method: GET
+        timeout: 5
+      loop:
+        - "https://www.google.com"
+        - "https://github.com"
+      register: service_tests
+      failed_when: false
+
+    - name: Display service connectivity results
+      ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ 'OK' if item.status == 200 else 'FAILED' }}"
+      loop: "{{ service_tests.results }}"
+
+    - name: Generate network report
+      ansible.builtin.copy:
+        dest: "/tmp/network_report_{{ ansible_date_time.date }}.txt"
+        content: |
+          Network Troubleshooting Report
+          Generated: {{ ansible_date_time.iso8601 }}
+          
+          Hostname: {{ ansible_hostname }}
+          IP Addresses: {{ ansible_all_ipv4_addresses | join(', ') }}
+          
+          DNS Resolution: {{ 'OK' if dns_test.rc == 0 else 'FAILED' }}
+          Internet Connectivity: {{ 'OK' if service_tests.results[0].status == 200 else 'FAILED' }}
+          
+          ZeroTier Status: {{ zt_status.stdout if zt_status.rc == 0 else 'Not available' }}
+          
+          Firewall: {{ 'Enabled' if ufw_status.rc == 0 and 'Status: active' in ufw_status.stdout else 'Disabled or not installed' }}
+
+    - name: Display report location
+      ansible.builtin.debug:
+        msg: "Network report saved to /tmp/network_report_{{ ansible_date_time.date }}.txt"

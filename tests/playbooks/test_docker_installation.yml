@@ -1,0 +1,69 @@
+---
+- name: Test Docker Installation
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Check if Docker is installed
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+      failed_when: false
+
+    - name: Display Docker version
+      ansible.builtin.debug:
+        msg: "Docker version: {{ docker_version.stdout }}"
+      when: docker_version.rc == 0
+
+    - name: Assert Docker is installed
+      ansible.builtin.assert:
+        that:
+          - docker_version.rc == 0
+        fail_msg: "Docker is not installed"
+        success_msg: "Docker is installed"
+
+    - name: Check Docker service status
+      ansible.builtin.systemd:
+        name: docker
+      register: docker_service
+
+    - name: Assert Docker service is running
+      ansible.builtin.assert:
+        that:
+          - docker_service.status.ActiveState == "active"
+        fail_msg: "Docker service is not running"
+        success_msg: "Docker service is running"
+
+    - name: Check if Docker Compose is installed
+      ansible.builtin.command: docker compose version
+      register: compose_version
+      changed_when: false
+      failed_when: false
+
+    - name: Display Docker Compose version
+      ansible.builtin.debug:
+        msg: "Docker Compose version: {{ compose_version.stdout }}"
+      when: compose_version.rc == 0
+
+    - name: Test Docker functionality
+      ansible.builtin.command: docker run --rm hello-world
+      register: docker_test
+      changed_when: false
+
+    - name: Assert Docker can run containers
+      ansible.builtin.assert:
+        that:
+          - docker_test.rc == 0
+          - "'Hello from Docker!' in docker_test.stdout"
+        fail_msg: "Docker cannot run containers"
+        success_msg: "Docker can run containers successfully"
+
+    - name: Check Docker network
+      ansible.builtin.command: docker network ls
+      register: docker_networks
+      changed_when: false
+
+    - name: Display Docker networks
+      ansible.builtin.debug:
+        var: docker_networks.stdout_lines

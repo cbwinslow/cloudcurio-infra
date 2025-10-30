@@ -1,0 +1,82 @@
+# Test outputs
+/tmp/test_output_*.log
+*.test.log
+test-results/
+
+# Network health logs
+/var/log/network-health.log
+/var/log/network-audit.log
+/var/log/zt-check.log
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Temporary files
+*.tmp
+*.swp
+*~
+.DS_Store
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+
+# Ansible
+*.retry
+.vault_pass
+vault_pass.txt
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# SSH keys (never commit!)
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Secrets and credentials
+*secret*
+*credential*
+*password*
+*.vault
+secrets.yml
+credentials.yml
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS generated files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Network reports
+network_report_*.txt
+
+# Temporary test files
+/tmp/
