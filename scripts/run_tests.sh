@@ -5,6 +5,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -45,20 +46,18 @@ run_test() {
     
     info "Running: $test_name"
     
-    if bash -c "$test_command" &> /tmp/test_output_$$.log; then
-        success "$test_name PASSED"
-        PASSED_TESTS=$((PASSED_TESTS + 1))
+
         return 0
     else
         error "$test_name FAILED"
         echo "  Error output:"
-        cat /tmp/test_output_$$.log | head -10 | sed 's/^/    /'
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+
         return 1
     fi
 }
 
 header "CloudCurio Infrastructure - Test Runner"
+
 
 echo "Test Execution Options:"
 echo "1) Run all tests"
@@ -187,10 +186,5 @@ echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
 echo -e "${RED}Failed: $FAILED_TESTS${NC}"
 echo ""
 
-if [ $FAILED_TESTS -eq 0 ]; then
-    success "All tests passed!"
-    exit 0
-else
-    error "Some tests failed. Review output above for details."
     exit 1
 fi

@@ -68,24 +68,20 @@
           #!/bin/bash
           # Network bypass helper - use multiple network paths
           
-          
-          
-          # Try direct connection first
-          echo "Trying direct connection..."
-          timeout 5 "$@" && exit 0
+er
           
           # Try through ZeroTier if available
           if command -v zerotier-cli &> /dev/null; then
               echo "Trying through ZeroTier..."
               # Route through ZeroTier interface
               ip route add default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
-              timeout 5 "$@" && exit 0
+
           fi
           
           # Try with proxychains
           if command -v proxychains &> /dev/null; then
               echo "Trying with proxychains..."
-              timeout 10 proxychains "$@" && exit 0
+
           fi
           
           echo "All connection attempts failed"
@@ -113,18 +109,14 @@
         mode: '0755'
         content: |
           #!/bin/bash
-          # Continuous network health monitoring
-          
-          LOG_FILE="/var/log/network-health.log"
-          
-          while true; do
-              TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
               
               # Test internet
               if ping -c 1 -W 2 8.8.8.8 &> /dev/null; then
                   INTERNET="OK"
               else
                   INTERNET="FAILED"
+
               fi
               
               # Test DNS
@@ -132,6 +124,7 @@
                   DNS="OK"
               else
                   DNS="FAILED"
+
               fi
               
               # Test ZeroTier
@@ -139,15 +132,7 @@
                   ZT="OK"
               else
                   ZT="FAILED"
-              fi
-              
-              echo "$TIMESTAMP | Internet: $INTERNET | DNS: $DNS | ZeroTier: $ZT" >> $LOG_FILE
-              
-              # If all failed, try to restart networking
-              if [ "$INTERNET" = "FAILED" ] && [ "$DNS" = "FAILED" ]; then
-                  echo "$TIMESTAMP | Network appears down, attempting recovery..." >> $LOG_FILE
-                  systemctl restart networking
-                  systemctl restart zerotier-one
+
               fi
               
               sleep 60
@@ -177,6 +162,7 @@
         name: network-health-monitor
         enabled: yes
         state: started
+
 
   handlers:
     - name: restart tinyproxy

@@ -2,36 +2,7 @@
 # Uninstaller script for Docker and Docker Compose
 set -e
 
-echo "Uninstalling Docker and Docker Compose..."
 
-# Warning
-read -p "This will remove Docker and all containers, images, volumes, and networks. Continue? (y/N): " confirm
-if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-    echo "Uninstallation cancelled."
-    exit 0
-fi
-
-# Stop all running containers
-echo "Stopping all containers..."
-sudo docker stop $(sudo docker ps -aq) 2>/dev/null || true
-
-# Remove all containers
-echo "Removing all containers..."
-sudo docker rm $(sudo docker ps -aq) 2>/dev/null || true
-
-# Remove all images
-echo "Removing all images..."
-sudo docker rmi $(sudo docker images -q) 2>/dev/null || true
-
-# Remove all volumes
-echo "Removing all volumes..."
-sudo docker volume rm $(sudo docker volume ls -q) 2>/dev/null || true
-
-# Remove all networks
-echo "Removing all networks..."
-networks=$(sudo docker network ls -q)
-if [ -n "$networks" ]; then
-    sudo docker network rm $networks 2>/dev/null || true
 fi
 
 # Stop and disable service
@@ -67,4 +38,4 @@ sudo apt update
 # Clean up unused dependencies
 sudo apt autoremove -y
 
-echo "Docker and Docker Compose uninstalled successfully!"
+

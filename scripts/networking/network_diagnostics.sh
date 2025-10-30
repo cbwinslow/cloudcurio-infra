@@ -2,6 +2,7 @@
 # Network diagnostic and troubleshooting script
 set -e
 
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -29,6 +30,7 @@ echo "=============================================="
 echo "Network Diagnostics and Troubleshooting"
 echo "=============================================="
 echo ""
+
 
 # Check internet connectivity
 echo "=== Internet Connectivity ==="
@@ -58,7 +60,7 @@ echo ""
 # Display DNS configuration
 echo "=== DNS Configuration ==="
 if [ -f /etc/resolv.conf ]; then
-    cat /etc/resolv.conf
+
 fi
 echo ""
 
@@ -86,19 +88,14 @@ echo ""
 echo "=== Firewall Status ==="
 if command -v ufw &> /dev/null; then
     info "UFW Status:"
-    sudo ufw status verbose || true
-fi
 
-if command -v iptables &> /dev/null; then
-    info "Active iptables rules:"
-    sudo iptables -L -n | head -20
 fi
 echo ""
 
 # Check listening ports
 echo "=== Listening Ports ==="
 info "Common service ports:"
-sudo netstat -tuln | grep LISTEN | head -20 || ss -tuln | grep LISTEN | head -20
+
 echo ""
 
 # Test connectivity to common ports
@@ -108,10 +105,7 @@ test_port() {
     local port=$2
     local service=$3
     
-    if timeout 2 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
-        success "$service ($host:$port) is reachable"
-    else
-        error "$service ($host:$port) is NOT reachable"
+
     fi
 }
 
@@ -145,3 +139,4 @@ echo "3. Test connectivity to specific hosts: ping <host>"
 echo "4. Check DNS resolution: nslookup <domain>"
 echo "5. Review routing table: ip route show"
 echo ""
+

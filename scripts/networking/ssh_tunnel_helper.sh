@@ -2,6 +2,7 @@
 # SSH tunnel helper script for bypassing network restrictions
 set -e
 
+
 echo "=============================================="
 echo "SSH Tunnel Helper"
 echo "=============================================="
@@ -32,16 +33,7 @@ create_local_forward() {
     read -p "Remote port: " remote_port
     read -p "SSH server (user@host): " ssh_server
     
-    echo "Creating local port forward..."
-    echo "Local port $local_port -> $remote_host:$remote_port via $ssh_server"
-    
-    ssh -f -N -L $local_port:$remote_host:$remote_port $ssh_server
-    
-    if [ $? -eq 0 ]; then
-        echo "✓ Tunnel created successfully!"
-        echo "You can now connect to localhost:$local_port"
-    else
-        echo "✗ Failed to create tunnel"
+
     fi
 }
 
@@ -51,15 +43,7 @@ create_remote_forward() {
     read -p "Local port: " local_port
     read -p "SSH server (user@host): " ssh_server
     
-    echo "Creating remote port forward..."
-    echo "Remote port $remote_port -> $local_host:$local_port"
-    
-    ssh -f -N -R $remote_port:$local_host:$local_port $ssh_server
-    
-    if [ $? -eq 0 ]; then
-        echo "✓ Tunnel created successfully!"
-    else
-        echo "✗ Failed to create tunnel"
+
     fi
 }
 
@@ -68,17 +52,12 @@ create_socks_proxy() {
     socks_port=${socks_port:-8080}
     read -p "SSH server (user@host): " ssh_server
     
-    echo "Creating SOCKS proxy on port $socks_port..."
-    
-    ssh -f -N -D $socks_port $ssh_server
-    
-    if [ $? -eq 0 ]; then
+
         echo "✓ SOCKS proxy created successfully!"
         echo "Configure your browser/application to use SOCKS5 proxy:"
         echo "  Host: localhost"
         echo "  Port: $socks_port"
-    else
-        echo "✗ Failed to create SOCKS proxy"
+
     fi
 }
 
@@ -86,16 +65,7 @@ create_reverse_tunnel() {
     read -p "Remote port (for reverse connection): " remote_port
     read -p "SSH server (user@host): " ssh_server
     
-    echo "Creating reverse SSH tunnel..."
-    echo "Remote users can connect to $ssh_server:$remote_port to reach this machine"
-    
-    ssh -f -N -R $remote_port:localhost:22 $ssh_server
-    
-    if [ $? -eq 0 ]; then
-        echo "✓ Reverse tunnel created successfully!"
-        echo "From remote machine, connect with: ssh -p $remote_port user@localhost"
-    else
-        echo "✗ Failed to create reverse tunnel"
+
     fi
 }
 
@@ -105,8 +75,7 @@ close_tunnel() {
     
     read -p "Enter PID to close: " pid
     
-    if [ -n "$pid" ]; then
-        kill $pid 2>/dev/null && echo "✓ Tunnel closed" || echo "✗ Failed to close tunnel"
+
     fi
 }
 
