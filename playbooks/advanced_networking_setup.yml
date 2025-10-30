@@ -68,24 +68,24 @@
           #!/bin/bash
           # Network bypass helper - use multiple network paths
           
-          COMMAND="$@"
+          
           
           # Try direct connection first
           echo "Trying direct connection..."
-          timeout 5 $COMMAND && exit 0
+          timeout 5 "$@" && exit 0
           
           # Try through ZeroTier if available
           if command -v zerotier-cli &> /dev/null; then
               echo "Trying through ZeroTier..."
               # Route through ZeroTier interface
-              ip route replace default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
-              timeout 5 $COMMAND && exit 0
+              ip route add default via $(ip -4 addr show zt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}') dev zt0 metric 100
+              timeout 5 "$@" && exit 0
           fi
           
           # Try with proxychains
           if command -v proxychains &> /dev/null; then
               echo "Trying with proxychains..."
-              timeout 10 proxychains $COMMAND && exit 0
+              timeout 10 proxychains "$@" && exit 0
           fi
           
           echo "All connection attempts failed"
