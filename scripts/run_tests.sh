@@ -45,7 +45,7 @@ run_test() {
     
     info "Running: $test_name"
     
-    if eval "$test_command" &> /tmp/test_output_$$.log; then
+    if bash -c "$test_command" &> /tmp/test_output_$$.log; then
         success "$test_name PASSED"
         PASSED_TESTS=$((PASSED_TESTS + 1))
         return 0
