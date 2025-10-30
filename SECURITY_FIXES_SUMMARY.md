@@ -69,9 +69,9 @@ All logs include:
 
 **Fix:**
 - Redact private IP addresses (RFC 1918 ranges):
-  - 10.0.0.0/8
-  - 172.16.0.0/12 (correctly only 172.16-31.x.x)
-  - 192.168.0.0/16
+  - 10.0.0.0/8 (10.0.0.0 through 10.255.255.255)
+  - 172.16.0.0/12 (172.16.0.0 through 172.31.255.255)
+  - 192.168.0.0/16 (192.168.0.0 through 192.168.255.255)
 - Show firewall rule summary only, not detailed rules
 - Show port numbers only, not full socket details
 - Added 0.5s delay between port scans (rate limiting)
@@ -129,8 +129,9 @@ All logs include:
 | `playbooks/advanced_networking_setup.yml` | +61 -2 | Structured logging, log rotation, logrotate config |
 | `scripts/networking/network_diagnostics.sh` | +41 -3 | Redaction, audit logging, secure output |
 | `scripts/run_tests.sh` | +16 -0 | Audit logging |
+| `SECURITY_FIXES_SUMMARY.md` | +176 -0 | Comprehensive security documentation (NEW) |
 
-**Total:** 351 lines added, 35 lines removed
+**Total:** 527 lines added, 35 lines removed (6 files changed)
 
 ## Security Scan Results
 
@@ -172,5 +173,5 @@ All identified security issues have been addressed:
 
 - RFC 1918: Address Allocation for Private Internets
 - OWASP Command Injection Prevention Cheat Sheet
+- CWE-77: Improper Neutralization of Special Elements used in a Command
 - CWE-78: Improper Neutralization of Special Elements used in an OS Command
-- CWE-89: Improper Neutralization of Special Elements used in an SQL Command
