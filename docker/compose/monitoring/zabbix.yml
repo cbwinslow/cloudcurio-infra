@@ -1,0 +1,167 @@
+version: '3.8'
+
+################################################################################
+# Zabbix Docker Compose Configuration
+#
+# Description: Complete Zabbix monitoring stack
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Services:
+#   - Zabbix Server
+#   - Zabbix Web Interface
+#   - Zabbix Agent
+#   - MySQL Database
+#
+# Default Access: http://localhost:8080
+# Default Credentials: Admin / zabbix
+#
+# Usage:
+#   docker-compose -f zabbix.yml up -d
+################################################################################
+
+services:
+  # MySQL database
+  mysql-server:
+    image: mysql:8.0
+    container_name: zabbix-mysql
+    restart: unless-stopped
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - zabbix-mysql-data:/var/lib/mysql
+    networks:
+      - zabbix-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Zabbix Server
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:alpine-6.4-latest
+    container_name: zabbix-server
+    restart: unless-stopped
+    depends_on:
+      mysql-server:
+        condition: service_healthy
+    environment:
+      DB_SERVER_HOST: mysql-server
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix_password
+      MYSQL_ROOT_PASSWORD: root_password
+      # Enable SNMP traps
+      ZBX_ENABLE_SNMP_TRAPS: "true"
+    ports:
+      - "10051:10051"  # Zabbix trapper
+      - "162:162/udp"  # SNMP traps
+    volumes:
+      - zabbix-alertscripts:/usr/lib/zabbix/alertscripts
+      - zabbix-externalscripts:/usr/lib/zabbix/externalscripts
+      - zabbix-modules:/var/lib/zabbix/modules
+      - zabbix-enc:/var/lib/zabbix/enc
+      - zabbix-ssh_keys:/var/lib/zabbix/ssh_keys
+      - zabbix-mibs:/var/lib/zabbix/mibs
+    networks:
+      - zabbix-network
+    healthcheck:
+      test: ["CMD", "zabbix_server", "-R", "config_cache_reload"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Zabbix Web Interface
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-mysql:alpine-6.4-latest
+    container_name: zabbix-web
+    restart: unless-stopped
+    depends_on:
+      - mysql-server
+      - zabbix-server
+    environment:
+      ZBX_SERVER_HOST: zabbix-server
+      DB_SERVER_HOST: mysql-server
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix_password
+      MYSQL_ROOT_PASSWORD: root_password
+      # PHP settings
+      PHP_TZ: UTC
+      ZBX_SERVER_NAME: "Zabbix Docker"
+    ports:
+      - "8080:8080"   # Web interface
+      - "8443:8443"   # HTTPS (if configured)
+    volumes:
+      - zabbix-web-ssl:/etc/ssl/nginx
+    networks:
+      - zabbix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Zabbix Agent (for monitoring the host)
+  zabbix-agent:
+    image: zabbix/zabbix-agent:alpine-6.4-latest
+    container_name: zabbix-agent
+    restart: unless-stopped
+    depends_on:
+      - zabbix-server
+    environment:
+      ZBX_HOSTNAME: "Zabbix Docker Host"
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_SERVER_PORT: 10051
+      ZBX_PASSIVE_ALLOW: "true"
+      ZBX_ACTIVE_ALLOW: "true"
+    ports:
+      - "10050:10050"
+    networks:
+      - zabbix-network
+    privileged: true
+    pid: host
+
+  # Zabbix Java Gateway (optional, for JMX monitoring)
+  zabbix-java-gateway:
+    image: zabbix/zabbix-java-gateway:alpine-6.4-latest
+    container_name: zabbix-java-gateway
+    restart: unless-stopped
+    environment:
+      ZBX_START_POLLERS: 5
+    ports:
+      - "10052:10052"
+    networks:
+      - zabbix-network
+
+networks:
+  zabbix-network:
+    driver: bridge
+
+volumes:
+  zabbix-mysql-data:
+    driver: local
+  zabbix-alertscripts:
+    driver: local
+  zabbix-externalscripts:
+    driver: local
+  zabbix-modules:
+    driver: local
+  zabbix-enc:
+    driver: local
+  zabbix-ssh_keys:
+    driver: local
+  zabbix-mibs:
+    driver: local
+  zabbix-web-ssl:
+    driver: local

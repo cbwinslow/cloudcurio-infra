@@ -1,0 +1,65 @@
+version: '3.8'
+
+################################################################################
+# Ghost Docker Compose Configuration
+#
+# Description: Headless CMS for blogs
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:2368
+#
+# Usage:
+#   docker-compose -f ghost.yml up -d
+################################################################################
+
+services:
+  ghost:
+    image: ghost:latest
+    container_name: ghost
+    restart: unless-stopped
+    ports:
+      - "2368:2368"
+    environment:
+      url: http://localhost:2368
+      database__client: mysql
+      database__connection__host: mysql
+      database__connection__user: ghost
+      database__connection__password: ghost_password
+      database__connection__database: ghost
+    volumes:
+      - ghost-data:/var/lib/ghost/content
+    networks:
+      - ghost
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: ghost-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ghost
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghost_password
+    volumes:
+      - ghost-mysql-data:/var/lib/mysql
+    networks:
+      - ghost
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  ghost:
+    driver: bridge
+
+volumes:
+  ghost-data:
+    driver: local
+  ghost-mysql-data:
+    driver: local

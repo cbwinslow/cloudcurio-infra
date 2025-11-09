@@ -1,0 +1,28 @@
+version: '3.8'
+
+################################################################################
+# Complete Monitoring Stack
+#
+# Description: Comprehensive monitoring solution with multiple tools
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Includes:
+#   - OpenNMS
+#   - Zabbix
+#   - Prometheus/Grafana (from existing monitoring-stack.yml)
+#
+# Usage:
+#   docker-compose -f monitoring-complete-stack.yml up -d
+################################################################################
+
+# This file can be used to reference and start all monitoring services
+# Use individual compose files for better modularity:
+# - monitoring/opennms.yml
+# - monitoring/zabbix.yml
+# - monitoring-stack.yml (existing Prometheus/Grafana)
+
+services:
+  placeholder:
+    image: alpine:latest
+    command: echo "Use individual compose files in docker/compose/monitoring/"

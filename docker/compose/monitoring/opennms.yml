@@ -1,0 +1,91 @@
+version: '3.8'
+
+################################################################################
+# OpenNMS Docker Compose Configuration
+#
+# Description: OpenNMS Network Management System deployment
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Services:
+#   - OpenNMS Horizon (main application)
+#   - PostgreSQL (database)
+#
+# Default Access: http://localhost:8980/opennms
+# Default Credentials: admin / admin
+#
+# Usage:
+#   docker-compose -f opennms.yml up -d
+################################################################################
+
+services:
+  # PostgreSQL database for OpenNMS
+  database:
+    image: postgres:15-alpine
+    container_name: opennms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opennms
+      POSTGRES_PASSWORD: opennms
+      POSTGRES_DB: opennms
+      TZ: UTC
+    volumes:
+      - opennms-db-data:/var/lib/postgresql/data
+    networks:
+      - opennms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opennms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OpenNMS Horizon
+  opennms:
+    image: opennms/horizon:31.0.8
+    container_name: opennms
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: opennms
+      POSTGRES_PASSWORD: opennms
+      OPENNMS_DBNAME: opennms
+      OPENNMS_DBUSER: opennms
+      OPENNMS_DBPASS: opennms
+      # Java options
+      JAVA_OPTS: "-Xms1g -Xmx2g"
+      TZ: UTC
+    ports:
+      - "8980:8980"   # Web UI
+      - "8101:8101"   # Karaf SSH
+      - "61616:61616" # ActiveMQ
+      - "162:162/udp" # SNMP Trap
+    volumes:
+      - opennms-data:/opennms-data
+      - opennms-etc:/opt/opennms/etc
+      - opennms-logs:/opt/opennms/logs
+    networks:
+      - opennms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8980/opennms/login.jsp"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+networks:
+  opennms-network:
+    driver: bridge
+
+volumes:
+  opennms-db-data:
+    driver: local
+  opennms-data:
+    driver: local
+  opennms-etc:
+    driver: local
+  opennms-logs:
+    driver: local

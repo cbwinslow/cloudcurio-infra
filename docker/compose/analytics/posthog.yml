@@ -1,0 +1,193 @@
+version: '3.8'
+
+################################################################################
+# PostHog Docker Compose Configuration
+#
+# Description: Product analytics platform with session recording
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Services:
+#   - PostHog Web
+#   - PostgreSQL
+#   - Redis
+#   - ClickHouse
+#   - Kafka & Zookeeper
+#
+# Default Access: http://localhost:8000
+#
+# Usage:
+#   docker-compose -f posthog.yml up -d
+################################################################################
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:14-alpine
+    container_name: posthog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: posthog
+      POSTGRES_PASSWORD: posthog
+      POSTGRES_DB: posthog
+    volumes:
+      - posthog-postgres-data:/var/lib/postgresql/data
+    networks:
+      - posthog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posthog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: posthog-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory-policy allkeys-lru --maxmemory 200mb
+    volumes:
+      - posthog-redis-data:/data
+    networks:
+      - posthog-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ClickHouse for analytics
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8-alpine
+    container_name: posthog-clickhouse
+    restart: unless-stopped
+    volumes:
+      - posthog-clickhouse-data:/var/lib/clickhouse
+    networks:
+      - posthog-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: zookeeper:3.8
+    container_name: posthog-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    volumes:
+      - posthog-zookeeper-data:/data
+      - posthog-zookeeper-logs:/datalog
+    networks:
+      - posthog-network
+
+  # Kafka message broker
+  kafka:
+    image: bitnami/kafka:3.5
+    container_name: posthog-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1001
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - posthog-kafka-data:/bitnami/kafka
+    networks:
+      - posthog-network
+
+  # PostHog Web
+  posthog:
+    image: posthog/posthog:latest
+    container_name: posthog
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      # Database
+      DATABASE_URL: postgres://posthog:posthog@postgres:5432/posthog
+      # Redis
+      REDIS_URL: redis://redis:6379/
+      # ClickHouse
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_DATABASE: posthog
+      CLICKHOUSE_SECURE: "false"
+      # Kafka
+      KAFKA_HOSTS: kafka:9092
+      # General settings
+      SECRET_KEY: "change-this-secret-key-in-production"
+      SITE_URL: http://localhost:8000
+      DISABLE_SECURE_SSL_REDIRECT: "true"
+      IS_BEHIND_PROXY: "true"
+      TRUST_ALL_PROXIES: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - posthog-data:/code/posthog
+    networks:
+      - posthog-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8000/_health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # PostHog Worker
+  posthog-worker:
+    image: posthog/posthog:latest
+    container_name: posthog-worker
+    restart: unless-stopped
+    depends_on:
+      - posthog
+    command: ./bin/docker-worker-celery --with-scheduler
+    environment:
+      # Same as PostHog Web
+      DATABASE_URL: postgres://posthog:posthog@postgres:5432/posthog
+      REDIS_URL: redis://redis:6379/
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_DATABASE: posthog
+      CLICKHOUSE_SECURE: "false"
+      KAFKA_HOSTS: kafka:9092
+      SECRET_KEY: "change-this-secret-key-in-production"
+      SITE_URL: http://localhost:8000
+      DISABLE_SECURE_SSL_REDIRECT: "true"
+    volumes:
+      - posthog-data:/code/posthog
+    networks:
+      - posthog-network
+
+networks:
+  posthog-network:
+    driver: bridge
+
+volumes:
+  posthog-postgres-data:
+    driver: local
+  posthog-redis-data:
+    driver: local
+  posthog-clickhouse-data:
+    driver: local
+  posthog-zookeeper-data:
+    driver: local
+  posthog-zookeeper-logs:
+    driver: local
+  posthog-kafka-data:
+    driver: local
+  posthog-data:
+    driver: local

@@ -1,0 +1,58 @@
+version: '3.8'
+
+################################################################################
+# Umami Analytics Docker Compose Configuration
+#
+# Description: Simple, fast, privacy-focused analytics
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+# Default Credentials: admin / umami
+#
+# Usage:
+#   docker-compose -f umami.yml up -d
+################################################################################
+
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://umami:umami@postgres:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: "change-this-to-a-random-secret"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - umami
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: umami-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: umami
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    networks:
+      - umami
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  umami:
+    driver: bridge
+
+volumes:
+  umami-db-data:
+    driver: local
