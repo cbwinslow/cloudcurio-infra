@@ -53,7 +53,7 @@
   hosts: servers
   become: yes
   roles:
-    - role: ssh-keys
+    - role: security/ssh-keys
       when: ssh_keys_role_exists | default(false)
 
   tasks:
@@ -137,11 +137,15 @@
 - name: Monitoring Stack
   hosts: servers
   become: yes
-  roles:
-    - monitoring/prometheus
-    - monitoring/grafana
-    - monitoring/loki
-  when: monitoring_enabled
+  tasks:
+    - name: Include monitoring roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop:
+        - monitoring/prometheus
+        - monitoring/grafana
+        - monitoring/loki
+      when: monitoring_enabled | default(false)
 
 - name: Networking Configuration
   hosts: servers

@@ -136,9 +136,11 @@
 - name: AI/ML Development Tools
   hosts: desktops
   become: yes
-  roles:
-    - development/ai-coding-tools
-  when: dev_tools_enabled
+  tasks:
+    - name: Include AI/ML development tools role
+      ansible.builtin.include_role:
+        name: development/ai-coding-tools
+      when: dev_tools_enabled | default(false)
 
 - name: Desktop Applications
   hosts: desktops
@@ -158,9 +160,11 @@
 - name: ZeroTier Networking
   hosts: desktops
   become: yes
-  roles:
-    - networking/zerotier
-  when: "'zerotier_nodes' in group_names"
+  tasks:
+    - name: Include ZeroTier role
+      ansible.builtin.include_role:
+        name: networking/zerotier
+      when: "'zerotier_nodes' in group_names"
 
 - name: Security Configuration
   hosts: desktops

@@ -65,11 +65,11 @@
         mode: '0644'
 
     - name: Start monitoring stack
-      community.docker.docker_compose:
-        project_src: /opt/containers/monitoring
-        state: present
-        pull: yes
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/containers/monitoring
       when: monitoring_enabled
+      changed_when: true
 
 - name: Deploy AI/ML Stack
   hosts: all
@@ -82,11 +82,11 @@
         mode: '0644'
 
     - name: Start AI/ML stack
-      community.docker.docker_compose:
-        project_src: /opt/containers/ai-ml
-        state: present
-        pull: yes
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/containers/ai-ml
       when: ai_ml_enabled | default(false)
+      changed_when: true
 
 - name: Deploy Database Stack
   hosts: servers
@@ -99,11 +99,11 @@
         mode: '0644'
 
     - name: Start database stack
-      community.docker.docker_compose:
-        project_src: /opt/containers/databases
-        state: present
-        pull: yes
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/containers/databases
       when: database_stack_enabled | default(false)
+      changed_when: true
 
 - name: Deploy Web Stack
   hosts: all
@@ -122,11 +122,11 @@
         mode: '0644'
 
     - name: Start web stack
-      community.docker.docker_compose:
-        project_src: /opt/containers/web
-        state: present
-        pull: yes
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/containers/web
       when: web_stack_enabled | default(false)
+      changed_when: true
 
 - name: Configure Container Systemd Services
   hosts: all
@@ -161,13 +161,13 @@
   become: yes
   tasks:
     - name: List running containers
-      community.docker.docker_host_info:
-        containers: yes
-      register: docker_info
+      ansible.builtin.command: docker ps --format "{{{{.Names}}}}"
+      register: docker_containers
+      changed_when: false
 
     - name: Display running containers
       ansible.builtin.debug:
-        msg: "Running containers: {{ docker_info.containers | map(attribute='Names') | list }}"
+        msg: "Running containers: {{ docker_containers.stdout_lines }}"
 
     - name: Check container resource usage
       ansible.builtin.shell: docker stats --no-stream --format "table {{{{.Name}}}}\t{{{{.CPUPerc}}}}\t{{{{.MemUsage}}}}"

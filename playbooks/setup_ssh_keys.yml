@@ -88,9 +88,11 @@
 
 - name: Configure SSH Client
   hosts: all
-  become: no
-  roles:
-    - security/ssh-keys
+  become: yes
+  tasks:
+    - name: Include SSH keys role
+      ansible.builtin.include_role:
+        name: security/ssh-keys
 
 - name: Configure SSH Server
   hosts: all
