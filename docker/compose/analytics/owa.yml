@@ -1,0 +1,60 @@
+version: '3.8'
+
+################################################################################
+# Open Web Analytics Docker Compose Configuration
+#
+# Description: Open-source web analytics framework
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8080/owa
+#
+# Usage:
+#   docker-compose -f owa.yml up -d
+################################################################################
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: owa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: owa
+      MYSQL_USER: owa
+      MYSQL_PASSWORD: owa
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - owa-mysql-data:/var/lib/mysql
+    networks:
+      - owa
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  owa:
+    image: webdevops/php-apache:8.0
+    container_name: owa
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - WEB_DOCUMENT_ROOT=/app
+    ports:
+      - "8080:80"
+    volumes:
+      - owa-data:/app
+    networks:
+      - owa
+
+networks:
+  owa:
+    driver: bridge
+
+volumes:
+  owa-mysql-data:
+    driver: local
+  owa-data:
+    driver: local

@@ -1,0 +1,63 @@
+version: '3.8'
+
+################################################################################
+# Automatisch Docker Compose Configuration
+#
+# Description: Open-source Zapier alternative for workflow automation
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+#
+# Usage:
+#   docker-compose -f automatisch.yml up -d
+################################################################################
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: automatisch-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: automatisch
+      POSTGRES_USER: automatisch
+      POSTGRES_DB: automatisch
+    volumes:
+      - automatisch-postgres-data:/var/lib/postgresql/data
+    networks:
+      - automatisch
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automatisch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  automatisch:
+    image: automatischio/automatisch:latest
+    container_name: automatisch
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://automatisch:automatisch@postgres:5432/automatisch
+      APP_ENV: production
+      ENCRYPTION_KEY: change-this-to-a-random-string-min-32-chars
+      WEBHOOK_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - automatisch-data:/app/storage
+    networks:
+      - automatisch
+
+networks:
+  automatisch:
+    driver: bridge
+
+volumes:
+  automatisch-postgres-data:
+    driver: local
+  automatisch-data:
+    driver: local

@@ -1,0 +1,35 @@
+version: '3.8'
+
+################################################################################
+# OliveTin Docker Compose Configuration
+#
+# Description: Web UI for running Linux shell commands
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:1337
+#
+# Usage:
+#   docker-compose -f olivetin.yml up -d
+################################################################################
+
+services:
+  olivetin:
+    image: jamesread/olivetin:latest
+    container_name: olivetin
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    volumes:
+      - olivetin-config:/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For Docker commands
+    networks:
+      - olivetin
+
+networks:
+  olivetin:
+    driver: bridge
+
+volumes:
+  olivetin-config:
+    driver: local

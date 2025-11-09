@@ -1,0 +1,79 @@
+version: '3.8'
+
+################################################################################
+# Mixpost Docker Compose Configuration
+#
+# Description: Self-hosted social media management platform
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8080
+#
+# Usage:
+#   docker-compose -f mixpost.yml up -d
+################################################################################
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mixpost-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mixpost
+      MYSQL_USER: mixpost
+      MYSQL_PASSWORD: mixpost
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mixpost-mysql-data:/var/lib/mysql
+    networks:
+      - mixpost
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mixpost-redis
+    restart: unless-stopped
+    volumes:
+      - mixpost-redis-data:/data
+    networks:
+      - mixpost
+
+  mixpost:
+    image: inovector/mixpost:latest
+    container_name: mixpost
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: mixpost
+      DB_USERNAME: mixpost
+      DB_PASSWORD: mixpost
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_KEY: base64:$(openssl rand -base64 32)
+      APP_URL: http://localhost:8080
+    ports:
+      - "8080:80"
+    volumes:
+      - mixpost-data:/var/www/html/storage
+    networks:
+      - mixpost
+
+networks:
+  mixpost:
+    driver: bridge
+
+volumes:
+  mixpost-mysql-data:
+    driver: local
+  mixpost-redis-data:
+    driver: local
+  mixpost-data:
+    driver: local

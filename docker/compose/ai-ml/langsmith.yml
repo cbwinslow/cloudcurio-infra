@@ -1,0 +1,74 @@
+version: '3.8'
+
+################################################################################
+# LangSmith Docker Compose Configuration
+#
+# Description: LangChain debugging and monitoring platform
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8000
+#
+# Note: This is a simplified setup. Full LangSmith requires API key from LangChain
+#
+# Usage:
+#   docker-compose -f langsmith.yml up -d
+################################################################################
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: langsmith-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: langsmith
+      POSTGRES_USER: langsmith
+      POSTGRES_PASSWORD: langsmith
+    volumes:
+      - langsmith-postgres-data:/var/lib/postgresql/data
+    networks:
+      - langsmith
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langsmith"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: langsmith-redis
+    restart: unless-stopped
+    volumes:
+      - langsmith-redis-data:/data
+    networks:
+      - langsmith
+
+  langsmith:
+    image: langchain/langsmith:latest
+    container_name: langsmith
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://langsmith:langsmith@postgres:5432/langsmith
+      REDIS_URL: redis://redis:6379
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-your-api-key-here}
+    ports:
+      - "8000:8000"
+    volumes:
+      - langsmith-data:/app/data
+    networks:
+      - langsmith
+
+networks:
+  langsmith:
+    driver: bridge
+
+volumes:
+  langsmith-postgres-data:
+    driver: local
+  langsmith-redis-data:
+    driver: local
+  langsmith-data:
+    driver: local
