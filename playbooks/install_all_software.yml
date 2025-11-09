@@ -1,0 +1,176 @@
+---
+################################################################################
+# Complete Software Installation Playbook
+# 
+# Description: Master playbook to install all software packages
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.ini playbooks/install_all_software.yml
+################################################################################
+
+- name: Install All CloudCurio Software
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    # Control which categories to install
+    install_monitoring: true
+    install_automation: true
+    install_analytics: true
+    install_data_infrastructure: true
+    install_cms: true
+    install_development: true
+    install_gaming: false  # Default off
+    
+  pre_tasks:
+    - name: Display installation plan
+      debug:
+        msg: |
+          CloudCurio Software Installation Plan:
+          ==================================
+          Target Host: {{ ansible_hostname }}
+          IP Address: {{ ansible_default_ipv4.address }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          
+          Categories to Install:
+          - Monitoring Tools: {{ install_monitoring }}
+          - Automation Platforms: {{ install_automation }}
+          - Analytics Tools: {{ install_analytics }}
+          - Data Infrastructure: {{ install_data_infrastructure }}
+          - CMS/Frameworks: {{ install_cms }}
+          - Development Tools: {{ install_development }}
+          - Gaming Tools: {{ install_gaming }}
+    
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Install common dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - build-essential
+          - software-properties-common
+        state: present
+      when: ansible_os_family == "Debian"
+  
+  tasks:
+    # Monitoring Tools
+    - name: Include monitoring tools playbook
+      include_tasks: install_monitoring_tools.yml
+      when: install_monitoring | bool
+    
+    # Automation Tools
+    - name: Include automation tools playbook
+      include_tasks: install_automation_tools.yml
+      when: install_automation | bool
+    
+    # Analytics Tools
+    - name: Install Analytics Tools
+      when: install_analytics | bool
+      block:
+        - name: Install Metabase
+          script: ../scripts/installers/analytics/install_metabase.sh
+          args:
+            creates: /opt/metabase
+          ignore_errors: yes
+        
+        - name: Install Apache Superset
+          script: ../scripts/installers/analytics/install_superset.sh
+          ignore_errors: yes
+    
+    # Data Infrastructure
+    - name: Install Data Infrastructure
+      when: install_data_infrastructure | bool
+      block:
+        - name: Install Apache Kafka
+          script: ../scripts/installers/data/install_kafka.sh
+          args:
+            creates: /opt/kafka
+          ignore_errors: yes
+        
+        - name: Install Apache Cassandra
+          script: ../scripts/installers/data/install_cassandra.sh
+          args:
+            creates: /etc/cassandra
+          ignore_errors: yes
+        
+        - name: Install Parseable
+          script: ../scripts/installers/data/install_parseable.sh
+          args:
+            creates: /usr/local/bin/parseable
+          ignore_errors: yes
+    
+    # CMS and Frameworks
+    - name: Install CMS and Frameworks
+      when: install_cms | bool
+      block:
+        - name: Install Hugo
+          script: ../scripts/installers/cms/install_hugo.sh
+          args:
+            creates: /usr/local/bin/hugo
+          ignore_errors: yes
+        
+        - name: Install Next.js
+          script: ../scripts/installers/frameworks/install_nextjs.sh
+          ignore_errors: yes
+        
+        - name: Install Astro
+          script: ../scripts/installers/frameworks/install_astro.sh
+          ignore_errors: yes
+    
+    # Development Tools
+    - name: Install Development Tools
+      when: install_development | bool
+      block:
+        - name: Install TypeScript LSP
+          script: ../scripts/installers/development/install_typescript_lsp.sh
+          ignore_errors: yes
+        
+        - name: Install Python LSP
+          script: ../scripts/installers/development/install_python_lsp.sh
+          ignore_errors: yes
+        
+        - name: Install OliveTin
+          script: ../scripts/installers/system/install_olivetin.sh
+          args:
+            creates: /usr/bin/olivetin
+          ignore_errors: yes
+    
+    # Gaming Tools
+    - name: Install Gaming Tools
+      when: install_gaming | bool
+      block:
+        - name: Install LinuxGSM
+          script: ../scripts/installers/gaming/install_linuxgsm.sh
+          ignore_errors: yes
+  
+  post_tasks:
+    - name: Display installation summary
+      debug:
+        msg: |
+          ========================================
+          CloudCurio Software Installation Complete!
+          ========================================
+          
+          Access your services:
+          - OpenNMS: http://{{ ansible_default_ipv4.address }}:8980/opennms
+          - Zabbix: http://{{ ansible_default_ipv4.address }}/zabbix
+          - Leon: http://{{ ansible_default_ipv4.address }}:1337
+          - Automatisch: http://{{ ansible_default_ipv4.address }}:3000
+          - Metabase: http://{{ ansible_default_ipv4.address }}:3000
+          - Apache Superset: http://{{ ansible_default_ipv4.address }}:8088
+          - OliveTin: http://{{ ansible_default_ipv4.address }}:1337
+          
+          For Docker-based services, use docker-compose files in:
+          /home/runner/work/cloudcurio-infra/cloudcurio-infra/docker/compose/
+          
+          Documentation: SOFTWARE_CATALOG.md
+          ========================================
