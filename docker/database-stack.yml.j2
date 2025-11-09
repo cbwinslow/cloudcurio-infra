@@ -1,0 +1,81 @@
+version: '3.8'
+
+# Database Stack - PostgreSQL, MySQL, Redis, MongoDB
+# Managed by Ansible
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER={{ postgres_user | default('postgres') }}
+      - POSTGRES_PASSWORD={{ postgres_password | default('postgres') }}
+      - POSTGRES_DB={{ postgres_db | default('postgres') }}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - /opt/data/postgres:/var/lib/postgresql/data
+    networks:
+      - databases
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD={{ mysql_root_password | default('mysql') }}
+      - MYSQL_DATABASE={{ mysql_database | default('mydb') }}
+      - MYSQL_USER={{ mysql_user | default('mysql') }}
+      - MYSQL_PASSWORD={{ mysql_password | default('mysql') }}
+    volumes:
+      - /opt/data/mysql:/var/lib/mysql
+    networks:
+      - databases
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass {{ redis_password | default('redis') }}
+    volumes:
+      - /opt/data/redis:/data
+    networks:
+      - databases
+
+  mongodb:
+    image: mongo:6
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME={{ mongodb_user | default('mongo') }}
+      - MONGO_INITDB_ROOT_PASSWORD={{ mongodb_password | default('mongo') }}
+    volumes:
+      - /opt/data/mongodb:/data/db
+    networks:
+      - databases
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+    networks:
+      - databases
+    depends_on:
+      - postgres
+      - mysql
+
+networks:
+  databases:
+    driver: bridge

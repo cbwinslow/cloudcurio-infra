@@ -1,0 +1,11 @@
+name: cloudcurio-infrastructure
+runtime: python
+description: Complete CloudCurio infrastructure stack using custom Pulumi library
+
+config:
+  zerotier_network_id:
+    description: ZeroTier network ID
+    default: ""
+  environment:
+    description: Environment name (dev, staging, production)
+    default: production

@@ -1,0 +1,77 @@
+#!/bin/bash
+# Server Backup Script
+# Managed by Ansible
+
+set -euo pipefail
+
+# Configuration
+BACKUP_DIR="/opt/backups"
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS={{ backup_retention_days | default(30) }}
+HOSTNAME=$(hostname)
+
+# Create backup directory
+mkdir -p "${BACKUP_DIR}/${BACKUP_DATE}"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${BACKUP_DIR}/backup.log"
+}
+
+# Backup Docker volumes
+backup_docker_volumes() {
+    log "Backing up Docker volumes..."
+    if command -v docker &> /dev/null; then
+        docker volume ls -q | while read -r volume; do
+            log "  - Backing up volume: ${volume}"
+            docker run --rm \
+                -v "${volume}:/data" \
+                -v "${BACKUP_DIR}/${BACKUP_DATE}:/backup" \
+                alpine tar czf "/backup/docker_volume_${volume}.tar.gz" -C /data .
+        done
+    fi
+}
+
+# Backup configuration files
+backup_configs() {
+    log "Backing up configuration files..."
+    tar czf "${BACKUP_DIR}/${BACKUP_DATE}/configs.tar.gz" \
+        /etc/ssh/sshd_config \
+        /etc/hosts \
+        /etc/systemd/system/*.service \
+        /opt/containers \
+        2>/dev/null || true
+}
+
+# Backup home directories
+backup_home() {
+    log "Backing up home directory..."
+    tar czf "${BACKUP_DIR}/${BACKUP_DATE}/home_{{ ansible_user }}.tar.gz" \
+        --exclude='*/.*cache' \
+        --exclude='*/.local/share/Trash' \
+        /home/{{ ansible_user }} \
+        2>/dev/null || true
+}
+
+# Cleanup old backups
+cleanup_old_backups() {
+    log "Cleaning up backups older than ${RETENTION_DAYS} days..."
+    find "${BACKUP_DIR}" -type d -name "20*" -mtime +${RETENTION_DAYS} -exec rm -rf {} + 2>/dev/null || true
+}
+
+# Main backup process
+main() {
+    log "Starting backup for ${HOSTNAME}"
+    
+    backup_configs
+    backup_docker_volumes
+    backup_home
+    cleanup_old_backups
+    
+    # Calculate backup size
+    BACKUP_SIZE=$(du -sh "${BACKUP_DIR}/${BACKUP_DATE}" | cut -f1)
+    log "Backup completed. Size: ${BACKUP_SIZE}"
+}
+
+# Run main function
+main

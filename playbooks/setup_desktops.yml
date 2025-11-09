@@ -1,0 +1,257 @@
+---
+# Complete Desktop/Workstation Setup Playbook
+# This playbook configures desktop hosts with development tools and user environment
+
+- name: Pre-flight Checks
+  hosts: desktops
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: Test connectivity to desktops
+      ansible.builtin.ping:
+
+    - name: Gather system facts
+      ansible.builtin.setup:
+
+    - name: Display desktop information
+      ansible.builtin.debug:
+        msg: "Setting up desktop {{ inventory_hostname }} ({{ ansible_host }}) running {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+- name: Base System Configuration
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install desktop packages
+      ansible.builtin.apt:
+        name: "{{ desktop_packages }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install development tools
+      ansible.builtin.apt:
+        name: "{{ dev_packages }}"
+        state: present
+      when: dev_tools_enabled and ansible_os_family == "Debian"
+
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      when: ansible_os_family == "Debian"
+
+- name: User Configuration
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Add user to Docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: "{{ dev_user_groups }}"
+        append: yes
+
+    - name: Create user development directories
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/{{ item }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      loop:
+        - workspace
+        - projects
+        - .config
+        - .local/bin
+
+- name: Development Environment
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Install VS Code
+      ansible.builtin.apt:
+        deb: https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64
+      when: install_vscode and ansible_os_family == "Debian"
+      ignore_errors: yes
+
+    - name: Install Node.js LTS
+      ansible.builtin.shell: |
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+        apt-get install -y nodejs
+      args:
+        creates: /usr/bin/node
+      when: ansible_os_family == "Debian"
+
+    - name: Install Python development tools
+      ansible.builtin.pip:
+        name:
+          - virtualenv
+          - pipenv
+          - black
+          - flake8
+          - pytest
+        executable: pip3
+
+- name: Container Development Setup
+  hosts: desktops
+  become: yes
+  roles:
+    - container/docker
+    - container/docker-compose
+
+- name: SSH and Git Configuration
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Configure SSH client
+      ansible.builtin.template:
+        src: ../templates/ssh_config.j2
+        dest: "/home/{{ ansible_user }}/.ssh/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Configure Git
+      community.general.git_config:
+        name: "{{ item.name }}"
+        scope: global
+        value: "{{ item.value }}"
+      loop:
+        - { name: 'user.name', value: '{{ git_user_name | default(ansible_user) }}' }
+        - { name: 'user.email', value: '{{ git_user_email | default(ansible_user + "@cloudcurio.cc") }}' }
+        - { name: 'core.editor', value: 'vim' }
+        - { name: 'init.defaultBranch', value: 'main' }
+      become: no
+
+- name: AI/ML Development Tools
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Include AI/ML development tools role
+      ansible.builtin.include_role:
+        name: development/ai-coding-tools
+      when: dev_tools_enabled | default(false)
+
+- name: Desktop Applications
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Install Flatpak
+      ansible.builtin.apt:
+        name: flatpak
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Flathub repository
+      ansible.builtin.command: flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      changed_when: false
+      ignore_errors: yes
+
+- name: ZeroTier Networking
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Include ZeroTier role
+      ansible.builtin.include_role:
+        name: networking/zerotier
+      when: "'zerotier_nodes' in group_names"
+
+- name: Security Configuration
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      when: ufw_enabled and ansible_os_family == "Debian"
+
+    - name: Configure UFW default policies
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+      when: ufw_enabled
+
+    - name: Allow SSH through UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+      when: ufw_enabled
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      when: ufw_enabled
+
+- name: Backup Configuration
+  hosts: desktops
+  become: yes
+  tasks:
+    - name: Create backup directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/backups
+        - /opt/backups/scripts
+
+    - name: Install desktop backup script
+      ansible.builtin.template:
+        src: ../templates/desktop_backup.sh.j2
+        dest: /opt/backups/scripts/backup.sh
+        mode: '0755'
+      when: backup_enabled
+
+    - name: Configure backup cron job
+      ansible.builtin.cron:
+        name: "Desktop backup"
+        minute: "0"
+        hour: "20"
+        job: "/opt/backups/scripts/backup.sh"
+        user: "{{ ansible_user }}"
+      when: backup_enabled
+
+- name: Final Validation
+  hosts: desktops
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: Verify Docker is running
+      ansible.builtin.command: docker ps
+      register: docker_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Check installed applications
+      ansible.builtin.command: "which {{ item }}"
+      register: app_check
+      changed_when: false
+      ignore_errors: yes
+      loop:
+        - code
+        - docker
+        - git
+        - python3
+
+    - name: Display setup summary
+      ansible.builtin.debug:
+        msg:
+          - "Desktop setup completed for {{ inventory_hostname }}"
+          - "Docker status: {{ 'Running' if docker_status.rc == 0 else 'Not running' }}"
+          - "VS Code: {{ 'Installed' if app_check.results[0].rc == 0 else 'Not installed' }}"
+          - "Development tools: {{ 'Enabled' if dev_tools_enabled else 'Disabled' }}"

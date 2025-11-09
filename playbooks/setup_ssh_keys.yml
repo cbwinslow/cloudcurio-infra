@@ -1,0 +1,151 @@
+---
+# SSH Key Management Playbook
+# Sets up SSH keys, authorized_keys, and SSH configuration across all hosts
+
+- name: Generate SSH Keys on Local Machine
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Ensure local .ssh directory exists
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.ssh"
+        state: directory
+        mode: '0700'
+
+    - name: Generate local SSH key pair if not exists
+      ansible.builtin.openssh_keypair:
+        path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
+        type: ed25519
+        comment: "ansible@cloudcurio"
+        state: present
+      register: local_ssh_key
+
+    - name: Read public key
+      ansible.builtin.slurp:
+        src: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
+      register: local_pub_key
+
+    - name: Set public key as fact
+      ansible.builtin.set_fact:
+        ansible_public_key: "{{ local_pub_key.content | b64decode | trim }}"
+
+- name: Deploy SSH Keys to All Hosts
+  hosts: all
+  become: yes
+  vars:
+    ssh_key_users:
+      - "{{ ansible_user }}"
+  
+  tasks:
+    - name: Ensure .ssh directory exists for users
+      ansible.builtin.file:
+        path: "/home/{{ item }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ item }}"
+        group: "{{ item }}"
+      loop: "{{ ssh_key_users }}"
+
+    - name: Deploy authorized_keys from local machine
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ hostvars['localhost']['ansible_public_key'] }}"
+        state: present
+      when: hostvars['localhost']['ansible_public_key'] is defined
+
+    - name: Generate SSH key pairs on remote hosts
+      ansible.builtin.openssh_keypair:
+        path: "/home/{{ ansible_user }}/.ssh/id_ed25519"
+        type: ed25519
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+        comment: "{{ ansible_user }}@{{ inventory_hostname }}"
+
+    - name: Fetch public keys from all hosts
+      ansible.builtin.slurp:
+        src: "/home/{{ ansible_user }}/.ssh/id_ed25519.pub"
+      register: host_public_keys
+
+    - name: Store public key as host fact
+      ansible.builtin.set_fact:
+        host_ssh_public_key: "{{ host_public_keys.content | b64decode | trim }}"
+
+- name: Cross-deploy SSH Keys Between Hosts
+  hosts: all
+  become: yes
+  tasks:
+    - name: Deploy all host public keys to authorized_keys
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ hostvars[item]['host_ssh_public_key'] }}"
+        state: present
+      loop: "{{ groups['all'] }}"
+      when: 
+        - item != inventory_hostname
+        - hostvars[item]['host_ssh_public_key'] is defined
+
+- name: Configure SSH Client
+  hosts: all
+  become: yes
+  tasks:
+    - name: Include SSH keys role
+      ansible.builtin.include_role:
+        name: security/ssh-keys
+
+- name: Configure SSH Server
+  hosts: all
+  become: yes
+  tasks:
+    - name: Configure SSH daemon security
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        validate: '/usr/sbin/sshd -t -f %s'
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+        - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+      notify: Restart SSH
+
+    - name: Ensure SSH is enabled and started
+      ansible.builtin.service:
+        name: sshd
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+- name: Verify SSH Key Setup
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Test SSH connectivity between hosts
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[item]['ansible_host'] }}"
+        port: 22
+        timeout: 5
+      loop: "{{ groups['all'] }}"
+      when: item != inventory_hostname
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: Display SSH setup summary
+      ansible.builtin.debug:
+        msg:
+          - "SSH key setup completed for {{ inventory_hostname }}"
+          - "Public key deployed to all hosts"
+          - "SSH client configured with host entries"
+          - "SSH server hardened with security settings"
