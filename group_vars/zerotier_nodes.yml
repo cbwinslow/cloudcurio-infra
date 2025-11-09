@@ -1,0 +1,56 @@
+---
+# Group variables for ZeroTier-connected nodes
+# These variables apply to all nodes connected via ZeroTier VPN
+
+# ZeroTier configuration
+zerotier_enabled: true
+zerotier_network_id: "{{ lookup('env', 'ZEROTIER_NETWORK_ID') | default('', true) }}"
+zerotier_api_token: "{{ lookup('env', 'ZEROTIER_API_TOKEN') | default('', true) }}"
+
+# ZeroTier network settings
+zerotier_network_subnet: "172.28.0.0/16"
+zerotier_mtu: 2800
+zerotier_allow_managed: true
+zerotier_allow_global: false
+zerotier_allow_default: false
+
+# Internal DNS for ZeroTier nodes
+internal_dns_enabled: true
+internal_domain: "zt.cloudcurio.cc"
+
+# Network services
+zerotier_services:
+  - name: ssh
+    port: 22
+    protocol: tcp
+  - name: monitoring
+    port: 9090
+    protocol: tcp
+  - name: grafana
+    port: 3000
+    protocol: tcp
+
+# Firewall rules specific to ZeroTier
+zerotier_firewall_rules:
+  - rule: allow
+    port: 22
+    proto: tcp
+    from: "{{ zerotier_network_subnet }}"
+  - rule: allow
+    port: 9090
+    proto: tcp
+    from: "{{ zerotier_network_subnet }}"
+  - rule: allow
+    port: 3000
+    proto: tcp
+    from: "{{ zerotier_network_subnet }}"
+
+# SSH configuration for ZeroTier
+ssh_zerotier_listen: true
+ssh_listen_addresses:
+  - "0.0.0.0"
+  - "{{ ansible_host }}"
+
+# Monitoring across ZeroTier
+prometheus_scrape_zerotier: true
+prometheus_targets: "{{ groups['zerotier_nodes'] | map('extract', hostvars, 'ansible_host') | list }}"

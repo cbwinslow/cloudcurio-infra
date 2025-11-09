@@ -1,0 +1,85 @@
+---
+# SSH Key Management Role
+# Manages SSH keys for users and service accounts
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "/home/{{ item }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+
+- name: Generate SSH key pairs for users
+  ansible.builtin.openssh_keypair:
+    path: "/home/{{ item.user }}/.ssh/id_{{ item.type | default('ed25519') }}"
+    type: "{{ item.type | default('ed25519') }}"
+    size: "{{ item.size | default(4096) }}"
+    owner: "{{ item.user }}"
+    group: "{{ item.user }}"
+    mode: '0600'
+    comment: "{{ item.comment | default(item.user + '@' + inventory_hostname) }}"
+  loop: "{{ ssh_keys_to_generate | default([]) }}"
+  when: ssh_keys_to_generate is defined
+
+- name: Deploy authorized_keys for users
+  ansible.posix.authorized_key:
+    user: "{{ item.user }}"
+    key: "{{ item.key }}"
+    state: present
+    exclusive: "{{ item.exclusive | default(false) }}"
+  loop: "{{ ssh_authorized_keys | default([]) }}"
+  when: ssh_authorized_keys is defined
+
+- name: Configure SSH client config
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "/home/{{ item }}/.ssh/config"
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: '0600'
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+
+- name: Set up SSH agent forwarding
+  ansible.builtin.lineinfile:
+    path: "/home/{{ item }}/.ssh/config"
+    line: "ForwardAgent yes"
+    create: yes
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: '0600'
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+  when: ssh_agent_forwarding | default(true)
+
+- name: Copy SSH known_hosts
+  ansible.builtin.template:
+    src: known_hosts.j2
+    dest: "/home/{{ item }}/.ssh/known_hosts"
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: '0644'
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+  when: ssh_known_hosts is defined
+
+- name: Set proper permissions on SSH directory
+  ansible.builtin.file:
+    path: "/home/{{ item }}/.ssh"
+    state: directory
+    mode: '0700'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    recurse: no
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+
+- name: Ensure private keys have correct permissions
+  ansible.builtin.shell: |
+    find /home/{{ item }}/.ssh -type f -name 'id_*' ! -name '*.pub' -exec chmod 600 {} \;
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+  changed_when: false
+
+- name: Ensure public keys have correct permissions
+  ansible.builtin.shell: |
+    find /home/{{ item }}/.ssh -type f -name '*.pub' -exec chmod 644 {} \;
+  loop: "{{ ssh_key_users | default([ansible_user]) }}"
+  changed_when: false

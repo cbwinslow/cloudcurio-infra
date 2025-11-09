@@ -1,0 +1,104 @@
+#!/bin/bash
+# Desktop Backup Script
+# Managed by Ansible
+
+set -euo pipefail
+
+# Configuration
+BACKUP_DIR="/opt/backups"
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS={{ backup_retention_days | default(14) }}
+HOSTNAME=$(hostname)
+USER="{{ ansible_user }}"
+
+# Create backup directory
+mkdir -p "${BACKUP_DIR}/${BACKUP_DATE}"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${BACKUP_DIR}/backup.log"
+}
+
+# Backup projects and workspace
+backup_workspace() {
+    log "Backing up workspace..."
+    if [ -d "/home/${USER}/workspace" ]; then
+        tar czf "${BACKUP_DIR}/${BACKUP_DATE}/workspace.tar.gz" \
+            --exclude='*/node_modules' \
+            --exclude='*/.venv' \
+            --exclude='*/target' \
+            --exclude='*/build' \
+            /home/${USER}/workspace \
+            2>/dev/null || true
+    fi
+    
+    if [ -d "/home/${USER}/projects" ]; then
+        tar czf "${BACKUP_DIR}/${BACKUP_DATE}/projects.tar.gz" \
+            --exclude='*/node_modules' \
+            --exclude='*/.venv' \
+            --exclude='*/target' \
+            --exclude='*/build' \
+            /home/${USER}/projects \
+            2>/dev/null || true
+    fi
+}
+
+# Backup configuration files
+backup_configs() {
+    log "Backing up configuration files..."
+    tar czf "${BACKUP_DIR}/${BACKUP_DATE}/dotfiles.tar.gz" \
+        -C /home/${USER} \
+        .bashrc \
+        .zshrc \
+        .vimrc \
+        .gitconfig \
+        .ssh/config \
+        .config \
+        2>/dev/null || true
+}
+
+# Backup SSH keys
+backup_ssh_keys() {
+    log "Backing up SSH keys..."
+    if [ -d "/home/${USER}/.ssh" ]; then
+        tar czf "${BACKUP_DIR}/${BACKUP_DATE}/ssh_keys.tar.gz" \
+            -C /home/${USER} \
+            .ssh \
+            2>/dev/null || true
+        chmod 600 "${BACKUP_DIR}/${BACKUP_DATE}/ssh_keys.tar.gz"
+    fi
+}
+
+# Backup Documents
+backup_documents() {
+    log "Backing up documents..."
+    if [ -d "/home/${USER}/Documents" ]; then
+        tar czf "${BACKUP_DIR}/${BACKUP_DATE}/documents.tar.gz" \
+            /home/${USER}/Documents \
+            2>/dev/null || true
+    fi
+}
+
+# Cleanup old backups
+cleanup_old_backups() {
+    log "Cleaning up backups older than ${RETENTION_DAYS} days..."
+    find "${BACKUP_DIR}" -type d -name "20*" -mtime +${RETENTION_DAYS} -exec rm -rf {} + 2>/dev/null || true
+}
+
+# Main backup process
+main() {
+    log "Starting desktop backup for ${HOSTNAME}"
+    
+    backup_workspace
+    backup_configs
+    backup_ssh_keys
+    backup_documents
+    cleanup_old_backups
+    
+    # Calculate backup size
+    BACKUP_SIZE=$(du -sh "${BACKUP_DIR}/${BACKUP_DATE}" | cut -f1)
+    log "Backup completed. Size: ${BACKUP_SIZE}"
+}
+
+# Run main function
+main

@@ -1,0 +1,10 @@
+name: cloudcurio-security
+runtime: python
+description: CloudCurio security infrastructure - WAF, Access policies, and security rules
+
+config:
+  cloudflare_account_id:
+    description: Cloudflare account ID
+  zone_name:
+    description: DNS zone name
+    default: cloudcurio.cc

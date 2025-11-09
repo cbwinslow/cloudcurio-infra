@@ -1,0 +1,179 @@
+---
+# Container Orchestration Setup Playbook
+# Deploys and manages Docker containers and compose stacks
+
+- name: Setup Docker and Container Runtime
+  hosts: all
+  become: yes
+  roles:
+    - container/docker
+    - container/docker-compose
+
+- name: Create Container Directory Structure
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create container directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/containers
+        - /opt/containers/monitoring
+        - /opt/containers/ai-ml
+        - /opt/containers/databases
+        - /opt/containers/web
+        - /opt/containers/automation
+        - /opt/containers/security
+
+    - name: Create data directories for persistent volumes
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/data
+        - /opt/data/prometheus
+        - /opt/data/grafana
+        - /opt/data/loki
+        - /opt/data/postgres
+        - /opt/data/redis
+        - /opt/data/qdrant
+        - /opt/data/weaviate
+
+- name: Deploy Monitoring Stack
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Copy monitoring stack docker-compose
+      ansible.builtin.template:
+        src: ../docker/monitoring-stack.yml.j2
+        dest: /opt/containers/monitoring/docker-compose.yml
+        mode: '0644'
+
+    - name: Copy Prometheus configuration
+      ansible.builtin.template:
+        src: ../templates/prometheus.yml.j2
+        dest: /opt/containers/monitoring/prometheus.yml
+        mode: '0644'
+
+    - name: Copy Grafana configuration
+      ansible.builtin.template:
+        src: ../templates/grafana.ini.j2
+        dest: /opt/containers/monitoring/grafana.ini
+        mode: '0644'
+
+    - name: Start monitoring stack
+      community.docker.docker_compose:
+        project_src: /opt/containers/monitoring
+        state: present
+        pull: yes
+      when: monitoring_enabled
+
+- name: Deploy AI/ML Stack
+  hosts: all
+  become: yes
+  tasks:
+    - name: Copy AI/ML stack docker-compose
+      ansible.builtin.template:
+        src: ../docker/ai-ml-stack.yml.j2
+        dest: /opt/containers/ai-ml/docker-compose.yml
+        mode: '0644'
+
+    - name: Start AI/ML stack
+      community.docker.docker_compose:
+        project_src: /opt/containers/ai-ml
+        state: present
+        pull: yes
+      when: ai_ml_enabled | default(false)
+
+- name: Deploy Database Stack
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Copy database stack docker-compose
+      ansible.builtin.template:
+        src: ../docker/database-stack.yml.j2
+        dest: /opt/containers/databases/docker-compose.yml
+        mode: '0644'
+
+    - name: Start database stack
+      community.docker.docker_compose:
+        project_src: /opt/containers/databases
+        state: present
+        pull: yes
+      when: database_stack_enabled | default(false)
+
+- name: Deploy Web Stack
+  hosts: all
+  become: yes
+  tasks:
+    - name: Copy web stack docker-compose
+      ansible.builtin.template:
+        src: ../docker/web-stack.yml.j2
+        dest: /opt/containers/web/docker-compose.yml
+        mode: '0644'
+
+    - name: Copy Caddy configuration
+      ansible.builtin.copy:
+        src: ../caddy/caddyfile
+        dest: /opt/containers/web/Caddyfile
+        mode: '0644'
+
+    - name: Start web stack
+      community.docker.docker_compose:
+        project_src: /opt/containers/web
+        state: present
+        pull: yes
+      when: web_stack_enabled | default(false)
+
+- name: Configure Container Systemd Services
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create systemd service for docker-compose stacks
+      ansible.builtin.template:
+        src: ../templates/systemd/docker-compose@.service
+        dest: /etc/systemd/system/docker-compose@.service
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable docker-compose systemd services
+      ansible.builtin.systemd:
+        name: "docker-compose@{{ item }}"
+        enabled: yes
+        daemon_reload: yes
+      loop:
+        - monitoring
+        - ai-ml
+        - databases
+        - web
+      when: container_systemd_enabled | default(true)
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+- name: Container Health Checks
+  hosts: all
+  become: yes
+  tasks:
+    - name: List running containers
+      community.docker.docker_host_info:
+        containers: yes
+      register: docker_info
+
+    - name: Display running containers
+      ansible.builtin.debug:
+        msg: "Running containers: {{ docker_info.containers | map(attribute='Names') | list }}"
+
+    - name: Check container resource usage
+      ansible.builtin.shell: docker stats --no-stream --format "table {{{{.Name}}}}\t{{{{.CPUPerc}}}}\t{{{{.MemUsage}}}}"
+      register: container_stats
+      changed_when: false
+
+    - name: Display container stats
+      ansible.builtin.debug:
+        msg: "{{ container_stats.stdout_lines }}"

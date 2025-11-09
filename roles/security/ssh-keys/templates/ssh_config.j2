@@ -1,0 +1,52 @@
+# SSH Client Configuration
+# Managed by Ansible - Do not edit manually
+
+# Global settings
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+    Compression yes
+{% if ssh_agent_forwarding | default(true) %}
+    ForwardAgent yes
+{% endif %}
+
+# ZeroTier nodes
+{% for host in groups['zerotier_nodes'] | default([]) %}
+Host {{ host }}
+    HostName {{ hostvars[host]['ansible_host'] }}
+    User {{ ansible_user }}
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking accept-new
+{% endfor %}
+
+# Jump host configuration
+{% if ssh_jump_host is defined %}
+Host {{ ssh_jump_host.name }}
+    HostName {{ ssh_jump_host.hostname }}
+    User {{ ssh_jump_host.user }}
+    Port {{ ssh_jump_host.port | default(22) }}
+    IdentityFile ~/.ssh/id_ed25519
+{% endif %}
+
+# Bastion configuration for internal hosts
+{% if ssh_bastion_host is defined %}
+Host internal-*
+    ProxyJump {{ ssh_bastion_host }}
+{% endif %}
+
+# Custom host configurations
+{% if ssh_custom_hosts is defined %}
+{% for custom_host in ssh_custom_hosts %}
+Host {{ custom_host.name }}
+    HostName {{ custom_host.hostname }}
+    User {{ custom_host.user | default(ansible_user) }}
+    Port {{ custom_host.port | default(22) }}
+{% if custom_host.identity_file is defined %}
+    IdentityFile {{ custom_host.identity_file }}
+{% endif %}
+{% if custom_host.proxy_jump is defined %}
+    ProxyJump {{ custom_host.proxy_jump }}
+{% endif %}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,54 @@
+---
+# Group variables for server hosts
+# These variables apply to all server-class hosts in the infrastructure
+
+# Server-specific packages
+server_packages:
+  - htop
+  - vim
+  - curl
+  - wget
+  - git
+  - tmux
+  - net-tools
+  - iotop
+  - sysstat
+  - ncdu
+
+# Server monitoring configuration
+monitoring_enabled: true
+prometheus_node_exporter_port: 9100
+grafana_enabled: true
+loki_enabled: true
+
+# Security settings
+ufw_enabled: true
+fail2ban_enabled: true
+ssh_port: 22
+ssh_password_authentication: no
+ssh_permit_root_login: no
+
+# Container runtime
+container_runtime: docker
+docker_compose_enabled: true
+
+# Backup configuration
+backup_enabled: true
+backup_schedule: "0 2 * * *"  # 2 AM daily
+backup_retention_days: 30
+
+# Log management
+log_rotation_enabled: true
+log_retention_days: 90
+
+# System resource limits
+max_open_files: 65536
+max_user_processes: 4096
+
+# Time synchronization
+ntp_enabled: true
+timezone: "America/New_York"
+
+# Automatic updates
+unattended_upgrades_enabled: true
+auto_reboot_enabled: false

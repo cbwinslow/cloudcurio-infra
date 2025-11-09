@@ -1,0 +1,14 @@
+name: cloudcurio-networking
+runtime: python
+description: CloudCurio networking infrastructure - DNS, tunnels, and VPN configuration
+
+config:
+  cloudflare_account_id:
+    description: Cloudflare account ID
+    default: ""
+  zone_name:
+    description: DNS zone name
+    default: cloudcurio.cc
+  tunnel_secret:
+    description: Cloudflare Tunnel secret
+    secret: true

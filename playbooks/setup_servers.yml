@@ -1,0 +1,229 @@
+---
+# Complete Server Setup Playbook
+# This playbook configures server hosts with all necessary services and configurations
+
+- name: Pre-flight Checks
+  hosts: servers
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: Test connectivity to servers
+      ansible.builtin.ping:
+
+    - name: Gather system facts
+      ansible.builtin.setup:
+
+    - name: Display server information
+      ansible.builtin.debug:
+        msg: "Setting up server {{ inventory_hostname }} ({{ ansible_host }}) running {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+- name: Base System Configuration
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install base server packages
+      ansible.builtin.apt:
+        name: "{{ server_packages }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    - name: Configure system limits
+      ansible.builtin.pam_limits:
+        domain: '*'
+        limit_type: "{{ item.type }}"
+        limit_item: "{{ item.item }}"
+        value: "{{ item.value }}"
+      loop:
+        - { type: 'soft', item: 'nofile', value: '{{ max_open_files }}' }
+        - { type: 'hard', item: 'nofile', value: '{{ max_open_files }}' }
+        - { type: 'soft', item: 'nproc', value: '{{ max_user_processes }}' }
+        - { type: 'hard', item: 'nproc', value: '{{ max_user_processes }}' }
+
+- name: SSH Configuration and Key Management
+  hosts: servers
+  become: yes
+  roles:
+    - role: ssh-keys
+      when: ssh_keys_role_exists | default(false)
+
+  tasks:
+    - name: Configure SSH daemon
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - { regexp: '^#?Port', line: 'Port {{ ssh_port }}' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication {{ "yes" if ssh_password_authentication else "no" }}' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin {{ "yes" if ssh_permit_root_login else "no" }}' }
+      notify: Restart SSH
+
+    - name: Ensure .ssh directory exists for user
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.ssh"
+        state: directory
+        mode: '0700'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+- name: Security Hardening
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+      when: ufw_enabled and ansible_os_family == "Debian"
+
+    - name: Configure UFW default policies
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+      when: ufw_enabled
+
+    - name: Allow SSH through UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+      when: ufw_enabled
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      when: ufw_enabled
+
+    - name: Install fail2ban
+      ansible.builtin.apt:
+        name: fail2ban
+        state: present
+      when: fail2ban_enabled and ansible_os_family == "Debian"
+
+    - name: Start and enable fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: started
+        enabled: yes
+      when: fail2ban_enabled
+
+- name: Container Runtime Setup
+  hosts: servers
+  become: yes
+  roles:
+    - container/docker
+    - container/docker-compose
+
+- name: Monitoring Stack
+  hosts: servers
+  become: yes
+  roles:
+    - monitoring/prometheus
+    - monitoring/grafana
+    - monitoring/loki
+  when: monitoring_enabled
+
+- name: Networking Configuration
+  hosts: servers
+  become: yes
+  roles:
+    - networking/zerotier
+    - networking/autossh
+    - networking/ssh-bastion
+
+- name: System Services Configuration
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Copy systemd service templates
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+      loop:
+        - { src: '../templates/systemd/prometheus.service', dest: '/etc/systemd/system/prometheus.service' }
+        - { src: '../templates/systemd/autossh@.service', dest: '/etc/systemd/system/autossh@.service' }
+      notify: Reload systemd
+
+    - name: Enable and start system services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      loop:
+        - prometheus
+      ignore_errors: yes
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+- name: Backup Configuration
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Create backup directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/backups
+        - /opt/backups/scripts
+
+    - name: Install backup script
+      ansible.builtin.template:
+        src: ../templates/backup_script.sh.j2
+        dest: /opt/backups/scripts/backup.sh
+        mode: '0755'
+      when: backup_enabled
+
+    - name: Configure backup cron job
+      ansible.builtin.cron:
+        name: "System backup"
+        minute: "0"
+        hour: "2"
+        job: "/opt/backups/scripts/backup.sh"
+        user: root
+      when: backup_enabled
+
+- name: Final Validation
+  hosts: servers
+  gather_facts: yes
+  become: no
+  tasks:
+    - name: Verify Docker is running
+      ansible.builtin.command: docker ps
+      register: docker_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display setup summary
+      ansible.builtin.debug:
+        msg:
+          - "Server setup completed for {{ inventory_hostname }}"
+          - "Docker status: {{ 'Running' if docker_status.rc == 0 else 'Not running' }}"
+          - "Monitoring: {{ 'Enabled' if monitoring_enabled else 'Disabled' }}"
+          - "Backup: {{ 'Enabled' if backup_enabled else 'Disabled' }}"

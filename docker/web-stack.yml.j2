@@ -1,0 +1,50 @@
+version: '3.8'
+
+# Web Stack - Caddy, Nginx, Apache
+# Managed by Ansible
+
+services:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/data/caddy/data:/data
+      - /opt/data/caddy/config:/config
+      - /var/www:/var/www:ro
+    networks:
+      - web
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8083:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /var/www:/usr/share/nginx/html:ro
+    networks:
+      - web
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9443:9443"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/data/portainer:/data
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge

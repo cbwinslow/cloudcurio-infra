@@ -1,0 +1,62 @@
+# Prometheus Configuration
+# Managed by Ansible
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cloudcurio'
+    environment: '{{ environment | default("production") }}'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporters on all hosts
+  - job_name: 'node-exporter'
+    static_configs:
+{% for host in groups['all'] | default([]) %}
+      - targets: ['{{ hostvars[host]['ansible_host'] }}:9100']
+        labels:
+          instance: '{{ host }}'
+          environment: '{{ environment | default("production") }}'
+{% endfor %}
+
+  # Docker metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:9323']
+
+  # Caddy metrics
+  - job_name: 'caddy'
+    static_configs:
+      - targets: ['localhost:2019']
+
+{% if prometheus_additional_jobs is defined %}
+{% for job in prometheus_additional_jobs %}
+  - job_name: '{{ job.name }}'
+    static_configs:
+      - targets: {{ job.targets | to_json }}
+{% if job.labels is defined %}
+        labels:
+{% for key, value in job.labels.items() %}
+          {{ key }}: '{{ value }}'
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}

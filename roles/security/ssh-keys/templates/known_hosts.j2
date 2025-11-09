@@ -1,0 +1,7 @@
+# SSH Known Hosts
+# Managed by Ansible - Do not edit manually
+
+{% for host in groups['all'] | default([]) %}
+# {{ host }}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['ssh_host_key'] | default('') }}
+{% endfor %}
