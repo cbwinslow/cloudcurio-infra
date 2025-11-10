@@ -42,7 +42,9 @@ services:
     environment:
       DATABASE_URL: postgresql://automatisch:automatisch@postgres:5432/automatisch
       APP_ENV: production
-      ENCRYPTION_KEY: change-this-to-a-random-string-min-32-chars
+      # WARNING: You MUST set the ENCRYPTION_KEY environment variable to a secure, random string (minimum 32 characters) before deploying.
+      # Do NOT use a default or placeholder value. Failure to do so will compromise the security of your data.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       WEBHOOK_URL: http://localhost:3000
       APP_URL: http://localhost:3000
     ports:
