@@ -1,0 +1,39 @@
+version: '3.8'
+
+################################################################################
+# Matchering Docker Compose Configuration
+#
+# Description: AI-powered audio mastering
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8000
+#
+# Usage:
+#   docker-compose -f matchering.yml up -d
+################################################################################
+
+services:
+  matchering:
+    image: sergree/matchering:latest
+    container_name: matchering
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - matchering-data:/app/data
+      - matchering-uploads:/app/uploads
+    environment:
+      MAX_UPLOAD_SIZE: 100M
+    networks:
+      - matchering
+
+networks:
+  matchering:
+    driver: bridge
+
+volumes:
+  matchering-data:
+    driver: local
+  matchering-uploads:
+    driver: local

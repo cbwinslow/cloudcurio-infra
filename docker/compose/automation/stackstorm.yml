@@ -1,0 +1,146 @@
+version: '3.8'
+
+################################################################################
+# StackStorm Docker Compose Configuration
+#
+# Description: Event-driven automation platform (IFTTT for Ops)
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Services:
+#   - StackStorm (all-in-one container)
+#   - MongoDB
+#   - RabbitMQ
+#   - Redis
+#
+# Default Access: https://localhost
+# Default Credentials: st2admin / Ch@ngeMe
+#
+# Usage:
+#   docker-compose -f stackstorm.yml up -d
+################################################################################
+
+services:
+  # MongoDB for StackStorm
+  mongo:
+    image: mongo:6.0
+    container_name: stackstorm-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: stackstorm
+      MONGO_INITDB_ROOT_PASSWORD: stackstorm
+    volumes:
+      - stackstorm-mongo-data:/data/db
+    networks:
+      - stackstorm-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: stackstorm-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: stackstorm
+      RABBITMQ_DEFAULT_PASS: stackstorm
+    ports:
+      - "15672:15672"  # Management UI
+    volumes:
+      - stackstorm-rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - stackstorm-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for coordination
+  redis:
+    image: redis:7-alpine
+    container_name: stackstorm-redis
+    restart: unless-stopped
+    volumes:
+      - stackstorm-redis-data:/data
+    networks:
+      - stackstorm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # StackStorm all-in-one
+  stackstorm:
+    image: stackstorm/stackstorm:latest
+    container_name: stackstorm
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database settings
+      ST2_DATABASE_HOST: mongo
+      ST2_DATABASE_PORT: 27017
+      ST2_DATABASE_USERNAME: stackstorm
+      ST2_DATABASE_PASSWORD: stackstorm
+      # RabbitMQ settings
+      ST2_RABBITMQ_HOST: rabbitmq
+      ST2_RABBITMQ_PORT: 5672
+      ST2_RABBITMQ_USERNAME: stackstorm
+      ST2_RABBITMQ_PASSWORD: stackstorm
+      # Redis settings
+      ST2_REDIS_HOST: redis
+      ST2_REDIS_PORT: 6379
+      # Auth settings
+      ST2_AUTH_USERNAME: st2admin
+      ST2_AUTH_PASSWORD: Ch@ngeMe
+      # Hostname
+      ST2_HOSTNAME: localhost
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "9101:9101"  # st2auth
+      - "9100:9100"  # st2api
+    volumes:
+      - stackstorm-packs:/opt/stackstorm/packs
+      - stackstorm-virtualenvs:/opt/stackstorm/virtualenvs
+      - stackstorm-configs:/opt/stackstorm/configs
+      - stackstorm-logs:/var/log/st2
+    networks:
+      - stackstorm-network
+    privileged: true
+    healthcheck:
+      test: ["CMD", "st2", "action", "list", "--limit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+networks:
+  stackstorm-network:
+    driver: bridge
+
+volumes:
+  stackstorm-mongo-data:
+    driver: local
+  stackstorm-rabbitmq-data:
+    driver: local
+  stackstorm-redis-data:
+    driver: local
+  stackstorm-packs:
+    driver: local
+  stackstorm-virtualenvs:
+    driver: local
+  stackstorm-configs:
+    driver: local
+  stackstorm-logs:
+    driver: local

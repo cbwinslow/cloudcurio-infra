@@ -1,0 +1,64 @@
+version: '3.8'
+
+################################################################################
+# Plausible Analytics Docker Compose Configuration
+#
+# Description: Privacy-friendly Google Analytics alternative
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8000
+#
+# Usage:
+#   docker-compose -f plausible.yml up -d
+################################################################################
+
+services:
+  plausible_db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - plausible-db-data:/var/lib/postgresql/data
+    networks:
+      - plausible
+
+  plausible_events_db:
+    image: clickhouse/clickhouse-server:23.3.7.5-alpine
+    restart: unless-stopped
+    volumes:
+      - plausible-event-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    networks:
+      - plausible
+
+  plausible:
+    image: plausible/analytics:latest
+    restart: unless-stopped
+    command: sh -c "sleep 10 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      - plausible_db
+      - plausible_events_db
+    ports:
+      - "8000:8000"
+    environment:
+      BASE_URL: http://localhost:8000
+      SECRET_KEY_BASE: "change-this-to-a-random-64-character-string"
+      DATABASE_URL: postgres://postgres:postgres@plausible_db:5432/plausible_db
+      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+    networks:
+      - plausible
+
+networks:
+  plausible:
+    driver: bridge
+
+volumes:
+  plausible-db-data:
+    driver: local
+  plausible-event-data:
+    driver: local

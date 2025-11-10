@@ -1,0 +1,31 @@
+version: '3.8'
+
+################################################################################
+# Web Check Docker Compose Configuration
+#
+# Description: Website availability and performance monitoring
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+#
+# Usage:
+#   docker-compose -f webcheck.yml up -d
+################################################################################
+
+services:
+  web-check:
+    image: lissy93/web-check:latest
+    container_name: web-check
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      CHROME_PATH: /usr/bin/chromium
+    networks:
+      - webcheck
+
+networks:
+  webcheck:
+    driver: bridge

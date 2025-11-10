@@ -1,0 +1,35 @@
+version: '3.8'
+
+################################################################################
+# Kibitzr Docker Compose Configuration
+#
+# Description: Personal Web Assistant for monitoring and automation
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Usage:
+#   docker-compose -f kibitzr.yml up -d
+################################################################################
+
+services:
+  kibitzr:
+    image: peterdemin/kibitzr:latest
+    container_name: kibitzr
+    restart: unless-stopped
+    volumes:
+      - kibitzr-config:/root/.config/kibitzr
+      - kibitzr-data:/data
+    environment:
+      TZ: UTC
+    networks:
+      - kibitzr
+
+networks:
+  kibitzr:
+    driver: bridge
+
+volumes:
+  kibitzr-config:
+    driver: local
+  kibitzr-data:
+    driver: local

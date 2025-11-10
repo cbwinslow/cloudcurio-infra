@@ -1,0 +1,44 @@
+version: '3.8'
+
+################################################################################
+# Homepage Docker Compose Configuration
+#
+# Description: Modern, customizable application dashboard
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+#
+# Usage:
+#   docker-compose -f homepage.yml up -d
+################################################################################
+
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: UTC
+    ports:
+      - "3000:3000"
+    volumes:
+      - homepage-config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro # For Docker integration
+    networks:
+      - homepage-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  homepage-network:
+    driver: bridge
+
+volumes:
+  homepage-config:
+    driver: local

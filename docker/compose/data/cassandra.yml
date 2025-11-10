@@ -1,0 +1,56 @@
+version: '3.8'
+
+################################################################################
+# Apache Cassandra Docker Compose Configuration
+#
+# Description: Distributed NoSQL database
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Port: 9042 (CQL)
+#
+# Usage:
+#   docker-compose -f cassandra.yml up -d
+################################################################################
+
+services:
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: CloudCurio
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_NUM_TOKENS: 256
+      # Memory settings
+      MAX_HEAP_SIZE: 2G
+      HEAP_NEWSIZE: 400M
+    ports:
+      - "9042:9042"   # CQL native transport
+      - "7000:7000"   # Inter-node communication
+      - "7001:7001"   # TLS inter-node communication
+      - "9160:9160"   # Thrift
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    networks:
+      - cassandra-network
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    ulimits:
+      memlock: -1
+      nproc: 32768
+      nofile: 100000
+
+networks:
+  cassandra-network:
+    driver: bridge
+
+volumes:
+  cassandra-data:
+    driver: local

@@ -1,0 +1,66 @@
+version: '3.8'
+
+################################################################################
+# RudderStack Docker Compose Configuration
+#
+# Description: Customer data platform (CDP) for collecting and routing data
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8080
+#
+# Usage:
+#   docker-compose -f rudderstack.yml up -d
+################################################################################
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rudderstack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rudderstack
+      POSTGRES_USER: rudderstack
+      POSTGRES_PASSWORD: rudderstack
+    volumes:
+      - rudderstack-postgres-data:/var/lib/postgresql/data
+    networks:
+      - rudderstack
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rudderstack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rudderstack:
+    image: rudderlabs/rudder-server:latest
+    container_name: rudderstack
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      RUDDER_TMPDIR: /tmp/rudder
+      RUDDER_WAREHOUSE_MODE: embedded
+      JOBS_DB_HOST: postgres
+      JOBS_DB_PORT: 5432
+      JOBS_DB_USER: rudderstack
+      JOBS_DB_PASSWORD: rudderstack
+      JOBS_DB_DB_NAME: rudderstack
+    ports:
+      - "8080:8080"
+      - "8082:8082"  # Admin API
+    volumes:
+      - rudderstack-data:/tmp/rudder
+    networks:
+      - rudderstack
+
+networks:
+  rudderstack:
+    driver: bridge
+
+volumes:
+  rudderstack-postgres-data:
+    driver: local
+  rudderstack-data:
+    driver: local

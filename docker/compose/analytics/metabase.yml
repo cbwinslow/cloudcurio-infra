@@ -1,0 +1,72 @@
+version: '3.8'
+
+################################################################################
+# Metabase Docker Compose Configuration
+#
+# Description: Business intelligence and analytics platform
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+#
+# Usage:
+#   docker-compose -f metabase.yml up -d
+################################################################################
+
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    restart: unless-stopped
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabase
+      MB_DB_PASS: metabase_secret
+      MB_DB_HOST: postgres
+      # Java options for better performance
+      JAVA_OPTS: "-Xmx1g -XX:+UseG1GC"
+    ports:
+      - "3000:3000"
+    volumes:
+      - metabase-data:/metabase-data
+    networks:
+      - metabase-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: metabase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: metabase_secret
+      POSTGRES_DB: metabase
+    volumes:
+      - metabase-postgres-data:/var/lib/postgresql/data
+    networks:
+      - metabase-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  metabase-network:
+    driver: bridge
+
+volumes:
+  metabase-data:
+    driver: local
+  metabase-postgres-data:
+    driver: local

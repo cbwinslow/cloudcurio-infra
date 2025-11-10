@@ -1,0 +1,46 @@
+version: '3.8'
+
+################################################################################
+# Bitwarden (Vaultwarden) Docker Compose Configuration
+#
+# Description: Self-hosted password manager (Bitwarden-compatible)
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8080
+#
+# Usage:
+#   docker-compose -f bitwarden.yml up -d
+################################################################################
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      WEBSOCKET_ENABLED: "true"
+      SIGNUPS_ALLOWED: "true"
+      DOMAIN: "http://localhost:8080"
+      # Optional: SMTP settings for email
+      # SMTP_HOST: smtp.gmail.com
+      # SMTP_FROM: your-email@gmail.com
+      # SMTP_PORT: 587
+      # SMTP_SECURITY: starttls
+      # SMTP_USERNAME: your-email@gmail.com
+      # SMTP_PASSWORD: your-app-password
+    ports:
+      - "8080:80"
+      - "3012:3012"  # WebSocket port
+    volumes:
+      - vaultwarden-data:/data
+    networks:
+      - bitwarden
+
+networks:
+  bitwarden:
+    driver: bridge
+
+volumes:
+  vaultwarden-data:
+    driver: local

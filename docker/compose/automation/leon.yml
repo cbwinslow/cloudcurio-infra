@@ -1,0 +1,39 @@
+version: '3.8'
+
+################################################################################
+# Leon AI Assistant Docker Compose Configuration
+#
+# Description: Open-source personal assistant
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:1337
+#
+# Usage:
+#   docker-compose -f leon.yml up -d
+################################################################################
+
+services:
+  leon:
+    image: leonai/leon:latest
+    container_name: leon
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    volumes:
+      - leon-data:/app
+    environment:
+      LEON_LANG: en-US
+      LEON_TIME_ZONE: UTC
+      LEON_HOST: 0.0.0.0
+      LEON_PORT: 1337
+    networks:
+      - leon
+
+networks:
+  leon:
+    driver: bridge
+
+volumes:
+  leon-data:
+    driver: local

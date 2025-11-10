@@ -1,0 +1,84 @@
+version: '3.8'
+
+################################################################################
+# Apache Superset Docker Compose Configuration
+#
+# Description: Modern data exploration and visualization platform
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8088
+# Default Credentials: admin/admin
+#
+# Usage:
+#   docker-compose -f superset.yml up -d
+################################################################################
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: superset-redis
+    restart: unless-stopped
+    volumes:
+      - superset-redis-data:/data
+    networks:
+      - superset
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: superset-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_USER: superset
+    volumes:
+      - superset-postgres-data:/var/lib/postgresql/data
+    networks:
+      - superset
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SUPERSET_SECRET_KEY: "change-this-to-a-random-secret"
+      DATABASE_HOST: postgres
+      DATABASE_PASSWORD: superset
+      DATABASE_USER: superset
+      DATABASE_DB: superset
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8088:8088"
+    volumes:
+      - superset-data:/app/superset_home
+    networks:
+      - superset
+    command: >
+      sh -c "superset db upgrade &&
+             superset fab create-admin --username admin --firstname Admin --lastname User --email admin@superset.com --password admin &&
+             superset init &&
+             superset run -h 0.0.0.0 -p 8088"
+
+networks:
+  superset:
+    driver: bridge
+
+volumes:
+  superset-redis-data:
+    driver: local
+  superset-postgres-data:
+    driver: local
+  superset-data:
+    driver: local

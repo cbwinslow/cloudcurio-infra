@@ -1,0 +1,90 @@
+version: '3.8'
+
+################################################################################
+# WordPress Docker Compose Configuration
+#
+# Description: Complete WordPress CMS with MySQL
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:8080
+#
+# Usage:
+#   docker-compose -f wordpress.yml up -d
+################################################################################
+
+services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress_secret
+      WORDPRESS_DB_NAME: wordpress
+      # Optional: Configure WordPress settings
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: 0
+    ports:
+      - "8080:80"
+    volumes:
+      - wordpress-data:/var/www/html
+    networks:
+      - wordpress-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  mysql:
+    image: mysql:8.0
+    container_name: wordpress-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress_secret
+    volumes:
+      - wordpress-mysql-data:/var/lib/mysql
+    networks:
+      - wordpress-network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin for database management (optional)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: wordpress-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: wordpress
+      PMA_PASSWORD: wordpress_secret
+    ports:
+      - "8081:80"
+    networks:
+      - wordpress-network
+
+networks:
+  wordpress-network:
+    driver: bridge
+
+volumes:
+  wordpress-data:
+    driver: local
+  wordpress-mysql-data:
+    driver: local

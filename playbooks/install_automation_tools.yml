@@ -1,0 +1,70 @@
+---
+################################################################################
+# Automation Tools Installation Playbook
+# 
+# Description: Installs automation platforms (Leon, Automatisch, etc.)
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.ini playbooks/install_automation_tools.yml
+################################################################################
+
+- name: Install Automation Tools
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    install_leon: true
+    install_automatisch: true
+    install_eonza: true
+    install_kibitzr: true
+    
+  tasks:
+    - name: Display installation plan
+      debug:
+        msg: |
+          Installing automation tools:
+          - Leon: {{ install_leon }}
+          - Automatisch: {{ install_automatisch }}
+          - Eonza: {{ install_eonza }}
+          - Kibitzr: {{ install_kibitzr }}
+    
+    - name: Install Leon
+      when: install_leon | bool
+      script: ../scripts/installers/automation/install_leon.sh
+      args:
+        creates: /opt/leon
+      register: leon_install
+      ignore_errors: yes
+    
+    - name: Install Automatisch
+      when: install_automatisch | bool
+      script: ../scripts/installers/automation/install_automatisch.sh
+      args:
+        creates: /opt/automatisch
+      register: automatisch_install
+      ignore_errors: yes
+    
+    - name: Install Eonza
+      when: install_eonza | bool
+      script: ../scripts/installers/automation/install_eonza.sh
+      args:
+        creates: /usr/local/bin/eonza
+      register: eonza_install
+      ignore_errors: yes
+    
+    - name: Install Kibitzr
+      when: install_kibitzr | bool
+      script: ../scripts/installers/automation/install_kibitzr.sh
+      register: kibitzr_install
+      ignore_errors: yes
+    
+    - name: Installation summary
+      debug:
+        msg: |
+          Automation tools installation complete!
+          Leon: http://{{ ansible_default_ipv4.address }}:1337
+          Automatisch: http://{{ ansible_default_ipv4.address }}:3000
+          Eonza: http://{{ ansible_default_ipv4.address }}:3234

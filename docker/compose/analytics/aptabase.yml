@@ -1,0 +1,60 @@
+version: '3.8'
+
+################################################################################
+# Aptabase Docker Compose Configuration
+#
+# Description: Open-source, privacy-first analytics for mobile and desktop apps
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Default Access: http://localhost:3000
+#
+# Usage:
+#   docker-compose -f aptabase.yml up -d
+################################################################################
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aptabase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aptabase
+      POSTGRES_USER: aptabase
+      POSTGRES_PASSWORD: aptabase
+    volumes:
+      - aptabase-postgres-data:/var/lib/postgresql/data
+    networks:
+      - aptabase
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aptabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  aptabase:
+    image: aptabase/aptabase:latest
+    container_name: aptabase
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://aptabase:aptabase@postgres:5432/aptabase
+      SECRET_KEY: change-this-to-a-random-secret
+    ports:
+      - "3000:3000"
+    volumes:
+      - aptabase-data:/app/data
+    networks:
+      - aptabase
+
+networks:
+  aptabase:
+    driver: bridge
+
+volumes:
+  aptabase-postgres-data:
+    driver: local
+  aptabase-data:
+    driver: local

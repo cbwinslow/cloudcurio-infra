@@ -1,0 +1,61 @@
+---
+################################################################################
+# Monitoring Tools Installation Playbook
+# 
+# Description: Installs monitoring tools (OpenNMS, Zabbix)
+# Author: CloudCurio Infrastructure Team
+# Version: 1.0.0
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.ini playbooks/install_monitoring_tools.yml
+################################################################################
+
+- name: Install Monitoring Tools
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    install_opennms: true
+    install_zabbix: true
+    
+  tasks:
+    - name: Display installation plan
+      debug:
+        msg: |
+          Installing monitoring tools:
+          - OpenNMS: {{ install_opennms }}
+          - Zabbix: {{ install_zabbix }}
+    
+    - name: Install OpenNMS
+      when: install_opennms | bool
+      block:
+        - name: Run OpenNMS installer script
+          script: ../scripts/installers/monitoring/install_opennms.sh
+          args:
+            creates: /opt/opennms
+          register: opennms_install
+          
+        - name: Display OpenNMS installation result
+          debug:
+            var: opennms_install.stdout_lines
+    
+    - name: Install Zabbix
+      when: install_zabbix | bool
+      block:
+        - name: Run Zabbix installer script
+          script: ../scripts/installers/monitoring/install_zabbix.sh
+          args:
+            creates: /etc/zabbix
+          register: zabbix_install
+          
+        - name: Display Zabbix installation result
+          debug:
+            var: zabbix_install.stdout_lines
+    
+    - name: Installation summary
+      debug:
+        msg: |
+          Monitoring tools installation complete!
+          OpenNMS: http://{{ ansible_default_ipv4.address }}:8980/opennms
+          Zabbix: http://{{ ansible_default_ipv4.address }}/zabbix
